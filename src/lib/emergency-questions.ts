@@ -1,0 +1,303 @@
+import { EmergencyCategory, EmergencyQuestion } from './emergency-types';
+
+export const EMERGENCY_QUESTIONS: EmergencyQuestion[] = [
+  {
+    id: 'allergies',
+    text: 'Do you have any known allergies to medications?',
+    category: 'common',
+    priority: 1,
+    type: 'yes_no',
+    required: true,
+    criticalFlag: true,
+    followUp: { condition: 'yes', questionId: 'allergy_details' },
+  },
+  {
+    id: 'allergy_details',
+    text: 'Please list your allergies',
+    category: 'common',
+    priority: 2,
+    type: 'text',
+    required: false,
+    criticalFlag: true,
+  },
+  {
+    id: 'current_medications',
+    text: 'Are you currently taking any medications?',
+    category: 'common',
+    priority: 3,
+    type: 'yes_no',
+    required: true,
+    followUp: { condition: 'yes', questionId: 'medication_details' },
+  },
+  {
+    id: 'medication_details',
+    text: 'What medications are you taking?',
+    category: 'common',
+    priority: 4,
+    type: 'text',
+    required: false,
+  },
+  {
+    id: 'bleeding',
+    text: 'Is there any active bleeding?',
+    category: 'accident',
+    priority: 1,
+    type: 'yes_no',
+    required: true,
+    criticalFlag: true,
+  },
+  {
+    id: 'consciousness',
+    text: 'Did the patient lose consciousness?',
+    category: 'accident',
+    priority: 2,
+    type: 'yes_no',
+    required: true,
+    criticalFlag: true,
+  },
+  {
+    id: 'accident_type',
+    text: 'What type of accident occurred?',
+    category: 'accident',
+    priority: 3,
+    type: 'select',
+    options: ['Vehicle accident', 'Fall', 'Workplace injury', 'Sports injury', 'Other'],
+    required: true,
+  },
+  {
+    id: 'pain_location',
+    text: 'Where is the pain located?',
+    category: 'accident',
+    priority: 4,
+    type: 'text',
+    required: true,
+  },
+  {
+    id: 'chest_pain_duration',
+    text: 'How long have you had chest pain?',
+    category: 'chest_pain',
+    priority: 1,
+    type: 'select',
+    options: ['Just started', 'Less than 30 minutes', '30 minutes to 1 hour', 'More than 1 hour'],
+    required: true,
+    criticalFlag: true,
+  },
+  {
+    id: 'chest_pain_type',
+    text: 'How would you describe the pain?',
+    category: 'chest_pain',
+    priority: 2,
+    type: 'select',
+    options: ['Sharp', 'Pressure/Squeezing', 'Burning', 'Dull ache'],
+    required: true,
+  },
+  {
+    id: 'radiating_pain',
+    text: 'Does the pain spread to arm, jaw, or back?',
+    category: 'chest_pain',
+    priority: 3,
+    type: 'yes_no',
+    required: true,
+    criticalFlag: true,
+  },
+  {
+    id: 'shortness_breath',
+    text: 'Do you have shortness of breath?',
+    category: 'chest_pain',
+    priority: 4,
+    type: 'yes_no',
+    required: true,
+  },
+  {
+    id: 'fever_temperature',
+    text: 'What is the body temperature (if known)?',
+    category: 'fever',
+    priority: 1,
+    type: 'text',
+    required: false,
+  },
+  {
+    id: 'fever_duration',
+    text: 'How long have you had fever?',
+    category: 'fever',
+    priority: 2,
+    type: 'select',
+    options: ['Less than 24 hours', '1-2 days', '3-5 days', 'More than 5 days'],
+    required: true,
+  },
+  {
+    id: 'fever_symptoms',
+    text: 'Do you have any of these symptoms?',
+    category: 'fever',
+    priority: 3,
+    type: 'multiple',
+    options: ['Headache', 'Body ache', 'Cough', 'Sore throat', 'Vomiting', 'Diarrhea'],
+    required: false,
+  },
+  {
+    id: 'breathing_severity',
+    text: 'How severe is the breathing difficulty?',
+    category: 'breathing',
+    priority: 1,
+    type: 'select',
+    options: ['Mild - can talk normally', 'Moderate - difficulty speaking', 'Severe - cannot speak', 'Using accessory muscles'],
+    required: true,
+    criticalFlag: true,
+  },
+  {
+    id: 'breathing_onset',
+    text: 'When did the breathing problem start?',
+    category: 'breathing',
+    priority: 2,
+    type: 'select',
+    options: ['Suddenly', 'Gradually over hours', 'Gradually over days'],
+    required: true,
+  },
+  {
+    id: 'asthma_history',
+    text: 'Do you have a history of asthma or COPD?',
+    category: 'breathing',
+    priority: 3,
+    type: 'yes_no',
+    required: true,
+  },
+  {
+    id: 'injury_location',
+    text: 'Where is the injury located?',
+    category: 'injury',
+    priority: 1,
+    type: 'text',
+    required: true,
+  },
+  {
+    id: 'injury_type',
+    text: 'What type of injury is it?',
+    category: 'injury',
+    priority: 2,
+    type: 'select',
+    options: ['Cut/Laceration', 'Fracture/Broken bone', 'Sprain', 'Bruise', 'Puncture wound'],
+    required: true,
+  },
+  {
+    id: 'injury_bleeding',
+    text: 'Is there bleeding?',
+    category: 'injury',
+    priority: 3,
+    type: 'yes_no',
+    required: true,
+    criticalFlag: true,
+  },
+  {
+    id: 'stroke_symptoms',
+    text: 'Which symptoms are present?',
+    category: 'stroke',
+    priority: 1,
+    type: 'multiple',
+    options: ['Face drooping', 'Arm weakness', 'Speech difficulty', 'Sudden confusion', 'Vision problems', 'Severe headache'],
+    required: true,
+    criticalFlag: true,
+  },
+  {
+    id: 'stroke_onset',
+    text: 'When did symptoms start?',
+    category: 'stroke',
+    priority: 2,
+    type: 'text',
+    required: true,
+    criticalFlag: true,
+  },
+  {
+    id: 'poison_substance',
+    text: 'What substance was ingested/exposed?',
+    category: 'poisoning',
+    priority: 1,
+    type: 'text',
+    required: true,
+    criticalFlag: true,
+  },
+  {
+    id: 'poison_amount',
+    text: 'How much was taken (if known)?',
+    category: 'poisoning',
+    priority: 2,
+    type: 'text',
+    required: false,
+  },
+  {
+    id: 'poison_time',
+    text: 'When did the exposure occur?',
+    category: 'poisoning',
+    priority: 3,
+    type: 'text',
+    required: true,
+    criticalFlag: true,
+  },
+  {
+    id: 'burn_type',
+    text: 'What caused the burn?',
+    category: 'burn',
+    priority: 1,
+    type: 'select',
+    options: ['Fire/Flame', 'Hot liquid', 'Chemical', 'Electrical', 'Radiation/Sun'],
+    required: true,
+  },
+  {
+    id: 'burn_area',
+    text: 'Which body parts are affected?',
+    category: 'burn',
+    priority: 2,
+    type: 'text',
+    required: true,
+  },
+  {
+    id: 'burn_size',
+    text: 'Approximately how large is the burn area?',
+    category: 'burn',
+    priority: 3,
+    type: 'select',
+    options: ['Small (palm size)', 'Medium (forearm size)', 'Large (multiple body parts)', 'Extensive'],
+    required: true,
+    criticalFlag: true,
+  },
+  {
+    id: 'other_complaint',
+    text: 'Please describe your main complaint',
+    category: 'other',
+    priority: 1,
+    type: 'text',
+    required: true,
+  },
+  {
+    id: 'other_duration',
+    text: 'How long have you had this problem?',
+    category: 'other',
+    priority: 2,
+    type: 'text',
+    required: true,
+  },
+];
+
+export function getQuestionsForCategory(category: EmergencyCategory): EmergencyQuestion[] {
+  const commonQuestions = EMERGENCY_QUESTIONS.filter(q => q.category === 'common');
+  const categoryQuestions = EMERGENCY_QUESTIONS.filter(q => q.category === category);
+  
+  const allQuestions = [...commonQuestions, ...categoryQuestions];
+  return allQuestions.sort((a, b) => {
+    if (a.criticalFlag && !b.criticalFlag) return -1;
+    if (!a.criticalFlag && b.criticalFlag) return 1;
+    return a.priority - b.priority;
+  });
+}
+
+export function shouldShowFollowUp(
+  question: EmergencyQuestion,
+  answer: string
+): string | null {
+  if (!question.followUp) return null;
+  
+  const { condition, questionId } = question.followUp;
+  if (answer.toLowerCase() === condition.toLowerCase()) {
+    return questionId;
+  }
+  return null;
+}
