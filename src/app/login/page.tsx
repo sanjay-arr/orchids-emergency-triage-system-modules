@@ -1,296 +1,447 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
+import { useAuth, UserRole } from "@/context/AuthContext";
+import { useTheme } from "@/context/ThemeContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { LANGUAGES } from "@/lib/emergency-types";
 import {
   Heart,
   User,
-  Lock,
   Stethoscope,
-  UserCog,
-  Users,
-  AlertCircle,
+  Mail,
+  Lock,
   ArrowRight,
+  Sun,
+  Moon,
+  Globe,
   Sparkles,
   Shield,
+  Activity,
+  Loader2,
 } from "lucide-react";
-
-type UserRole = "patient" | "caregiver" | "nurse" | "doctor" | "admin";
-
-const DEMO_USERS = [
-  { role: "doctor" as UserRole, name: "Dr. Sharma", id: "DOC001", icon: Stethoscope, color: "from-blue-600 to-cyan-500" },
-  { role: "nurse" as UserRole, name: "Nurse Priya", id: "NUR001", icon: Users, color: "from-pink-600 to-rose-500" },
-  { role: "admin" as UserRole, name: "Admin User", id: "ADM001", icon: UserCog, color: "from-purple-600 to-violet-500" },
-  { role: "caregiver" as UserRole, name: "Family Member", id: "CAR001", icon: User, color: "from-emerald-600 to-teal-500" },
-];
 
 export default function LoginPage() {
   const router = useRouter();
-  const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
-  const [username, setUsername] = useState("");
+  const { login, signup, isLoading } = useAuth();
+  const { theme, toggleTheme } = useTheme();
+  const { language, setLanguage, t } = useLanguage();
+
+  const [mode, setMode] = useState<"login" | "signup">("login");
+  const [role, setRole] = useState<UserRole>("patient");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [showLangMenu, setShowLangMenu] = useState(false);
 
-  const handleQuickLogin = (role: UserRole, name: string, id: string) => {
-    setIsLoading(true);
-    localStorage.setItem("emergency_user", JSON.stringify({ role, name, id }));
-    setTimeout(() => {
-      if (role === "doctor" || role === "nurse" || role === "admin") {
-        router.push("/dashboard");
-      } else {
-        router.push("/emergency");
-      }
-    }, 800);
-  };
-
-  const handleLogin = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!username || !password) {
-      setError("Please enter username and password");
-      return;
+    setError("");
+
+    let success = false;
+    if (mode === "login") {
+      success = await login(email, password, role);
+    } else {
+      success = await signup(name, email, password, role);
     }
-    setIsLoading(true);
-    localStorage.setItem("emergency_user", JSON.stringify({ 
-      role: selectedRole || "caregiver", 
-      name: username, 
-      id: `USR${Date.now().toString(36).toUpperCase()}` 
-    }));
-    setTimeout(() => {
-      router.push("/emergency");
-    }, 800);
+
+    if (success) {
+      router.push(role === "doctor" ? "/doctor" : "/dashboard");
+    } else {
+      setError("Invalid credentials. Please try again.");
+    }
   };
 
-  const handleGuestAccess = () => {
-    setIsLoading(true);
-    localStorage.setItem("emergency_user", JSON.stringify({ 
-      role: "patient", 
-      name: "Guest User", 
-      id: `GST${Date.now().toString(36).toUpperCase()}` 
-    }));
-    setTimeout(() => {
-      router.push("/emergency");
-    }, 800);
-  };
+  const isDark = theme === "dark";
 
   return (
-    <div className="min-h-screen bg-[#0a0f1a] relative overflow-hidden flex items-center justify-center">
-      <div className="absolute inset-0">
-        <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top_left,rgba(220,38,38,0.15),transparent_50%)]" />
-        <div className="absolute bottom-0 right-0 w-full h-full bg-[radial-gradient(ellipse_at_bottom_right,rgba(234,88,12,0.1),transparent_50%)]" />
-        <div className="absolute inset-0 dot-pattern opacity-20" />
+    <div
+      className={`min-h-screen transition-colors duration-500 ${
+        isDark
+          ? "bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950"
+          : "bg-gradient-to-br from-blue-50 via-white to-rose-50"
+      }`}
+    >
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div
+          className={`absolute top-0 left-1/4 w-[600px] h-[600px] rounded-full blur-3xl ${
+            isDark ? "bg-red-500/10" : "bg-red-200/40"
+          }`}
+        />
+        <div
+          className={`absolute bottom-0 right-1/4 w-[600px] h-[600px] rounded-full blur-3xl ${
+            isDark ? "bg-blue-500/10" : "bg-blue-200/40"
+          }`}
+        />
+        <div
+          className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full blur-3xl ${
+            isDark ? "bg-purple-500/5" : "bg-purple-200/30"
+          }`}
+        />
       </div>
 
-      <div className="absolute top-20 left-20 w-72 h-72 bg-red-500/10 rounded-full blur-[100px] animate-pulse" />
-      <div className="absolute bottom-20 right-20 w-96 h-96 bg-orange-500/10 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: "1s" }} />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-500/5 rounded-full blur-[150px]" />
+      <div className="fixed top-6 right-6 z-50 flex items-center gap-3">
+        <div className="relative">
+          <button
+            onClick={() => setShowLangMenu(!showLangMenu)}
+            className={`p-3 rounded-full transition-all ${
+              isDark
+                ? "bg-slate-800/80 hover:bg-slate-700 text-white border border-slate-700"
+                : "bg-white/80 hover:bg-white text-slate-800 border border-slate-200 shadow-lg"
+            }`}
+          >
+            <Globe className="w-5 h-5" />
+          </button>
+          <AnimatePresence>
+            {showLangMenu && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className={`absolute right-0 mt-2 rounded-xl overflow-hidden shadow-xl ${
+                  isDark ? "bg-slate-800 border border-slate-700" : "bg-white border border-slate-200"
+                }`}
+              >
+                {LANGUAGES.map((lang) => (
+                  <button
+                    key={lang.value}
+                    onClick={() => {
+                      setLanguage(lang.value);
+                      setShowLangMenu(false);
+                    }}
+                    className={`w-full px-4 py-3 text-left flex items-center gap-3 transition-colors ${
+                      language === lang.value
+                        ? isDark
+                          ? "bg-red-500/20 text-red-400"
+                          : "bg-red-50 text-red-600"
+                        : isDark
+                        ? "hover:bg-slate-700 text-slate-300"
+                        : "hover:bg-slate-50 text-slate-700"
+                    }`}
+                  >
+                    <span className="font-medium">{lang.native}</span>
+                    <span className="text-xs opacity-60">{lang.label}</span>
+                  </button>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
 
-      <div className="relative z-10 w-full max-w-5xl mx-auto px-4 py-8">
-        <motion.div
-          initial={{ opacity: 0, y: -30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-12"
+        <button
+          onClick={toggleTheme}
+          className={`p-3 rounded-full transition-all ${
+            isDark
+              ? "bg-slate-800/80 hover:bg-slate-700 text-yellow-400 border border-slate-700"
+              : "bg-white/80 hover:bg-white text-slate-800 border border-slate-200 shadow-lg"
+          }`}
         >
-          <div className="inline-flex items-center justify-center mb-6">
-            <div className="relative">
-              <div className="absolute inset-0 bg-red-500/30 rounded-full blur-xl animate-pulse" />
-              <div className="relative w-24 h-24 bg-gradient-to-br from-red-500 to-orange-500 rounded-3xl flex items-center justify-center shadow-lg shadow-red-500/30 rotate-3">
-                <Heart className="w-12 h-12 text-white animate-heartbeat" />
+          {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+        </button>
+      </div>
+
+      <div className="relative z-10 min-h-screen flex">
+        <div className="hidden lg:flex lg:w-1/2 items-center justify-center p-12">
+          <motion.div
+            initial={{ opacity: 0, x: -50 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.8 }}
+            className="max-w-lg"
+          >
+            <div className="flex items-center gap-4 mb-8">
+              <div
+                className={`w-16 h-16 rounded-2xl flex items-center justify-center ${
+                  isDark ? "bg-red-500/20" : "bg-red-100"
+                }`}
+              >
+                <Heart className={`w-8 h-8 ${isDark ? "text-red-400" : "text-red-500"}`} />
+              </div>
+              <div>
+                <h1 className={`text-3xl font-bold ${isDark ? "text-white" : "text-slate-900"}`}>
+                  MedEmergency
+                </h1>
+                <p className={`${isDark ? "text-slate-400" : "text-slate-600"}`}>
+                  AI-Powered Triage System
+                </p>
               </div>
             </div>
-          </div>
 
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.2 }}
-            className="inline-flex items-center gap-2 bg-red-500/20 border border-red-500/30 rounded-full px-6 py-2 mb-4"
-          >
-            <Shield className="w-4 h-4 text-red-400" />
-            <span className="text-red-400 text-sm font-medium">Secure Healthcare Portal</span>
-          </motion.div>
-
-          <h1 className="text-5xl font-bold text-white mb-3 tracking-tight">
-            Emergency <span className="text-gradient">Medical System</span>
-          </h1>
-          <p className="text-slate-400 text-lg max-w-xl mx-auto">
-            AI-powered voice-based emergency form automation for faster, safer medical response
-          </p>
-        </motion.div>
-
-        <div className="grid lg:grid-cols-2 gap-8">
-          <motion.div
-            initial={{ opacity: 0, x: -30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.3 }}
-            className="glass-card rounded-3xl p-8"
-          >
-            <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-3">
-              <Sparkles className="w-5 h-5 text-amber-400" />
-              Quick Access
+            <h2
+              className={`text-4xl font-bold mb-6 leading-tight ${
+                isDark ? "text-white" : "text-slate-900"
+              }`}
+            >
+              {t("welcome")}
             </h2>
-            <p className="text-slate-400 text-sm mb-6">
-              Select your role for instant demo access
+
+            <p className={`text-lg mb-8 ${isDark ? "text-slate-400" : "text-slate-600"}`}>
+              Smart medical intake with multi-language support, voice recognition, and real-time
+              priority assessment.
             </p>
 
-            <div className="grid grid-cols-2 gap-4">
-              {DEMO_USERS.map((user, idx) => (
-                <motion.button
-                  key={user.role}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.4 + idx * 0.1 }}
-                  whileHover={{ scale: 1.03, y: -4 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => handleQuickLogin(user.role, user.name, user.id)}
-                  disabled={isLoading}
-                  className={`relative p-5 rounded-2xl bg-gradient-to-br ${user.color} text-white shadow-lg transition-all overflow-hidden group`}
+            <div className="space-y-4">
+              {[
+                {
+                  icon: Activity,
+                  title: "Real-time Triage",
+                  desc: "AI-powered priority assessment",
+                },
+                {
+                  icon: Globe,
+                  title: "Multi-language",
+                  desc: "English, Tamil, Hindi support",
+                },
+                { icon: Shield, title: "Secure", desc: "HIPAA-compliant data handling" },
+                {
+                  icon: Sparkles,
+                  title: "Voice Input",
+                  desc: "Speak your responses naturally",
+                },
+              ].map((feature, i) => (
+                <motion.div
+                  key={feature.title}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.2 + i * 0.1 }}
+                  className={`flex items-center gap-4 p-4 rounded-xl ${
+                    isDark ? "bg-slate-800/50" : "bg-white/80 shadow-sm"
+                  }`}
                 >
-                  <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <user.icon className="w-8 h-8 mb-3" />
-                  <p className="font-bold text-lg">{user.name}</p>
-                  <p className="text-white/70 text-xs">{user.role.charAt(0).toUpperCase() + user.role.slice(1)}</p>
-                </motion.button>
+                  <div
+                    className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                      isDark ? "bg-red-500/20" : "bg-red-100"
+                    }`}
+                  >
+                    <feature.icon className={`w-5 h-5 ${isDark ? "text-red-400" : "text-red-500"}`} />
+                  </div>
+                  <div>
+                    <p className={`font-semibold ${isDark ? "text-white" : "text-slate-900"}`}>
+                      {feature.title}
+                    </p>
+                    <p className={`text-sm ${isDark ? "text-slate-400" : "text-slate-600"}`}>
+                      {feature.desc}
+                    </p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+        </div>
+
+        <div className="flex-1 flex items-center justify-center p-6 lg:p-12">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className={`w-full max-w-md p-8 rounded-3xl ${
+              isDark
+                ? "bg-slate-900/80 border border-slate-800"
+                : "bg-white/90 border border-slate-200 shadow-xl"
+            }`}
+          >
+            <div className="lg:hidden flex items-center gap-3 mb-8 justify-center">
+              <div
+                className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                  isDark ? "bg-red-500/20" : "bg-red-100"
+                }`}
+              >
+                <Heart className={`w-6 h-6 ${isDark ? "text-red-400" : "text-red-500"}`} />
+              </div>
+              <span className={`text-2xl font-bold ${isDark ? "text-white" : "text-slate-900"}`}>
+                MedEmergency
+              </span>
+            </div>
+
+            <div className="flex mb-8">
+              {(["login", "signup"] as const).map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setMode(m)}
+                  className={`flex-1 py-3 text-center font-semibold transition-all rounded-xl ${
+                    mode === m
+                      ? isDark
+                        ? "bg-red-500/20 text-red-400"
+                        : "bg-red-50 text-red-600"
+                      : isDark
+                      ? "text-slate-400 hover:text-white"
+                      : "text-slate-500 hover:text-slate-900"
+                  }`}
+                >
+                  {t(m)}
+                </button>
               ))}
             </div>
 
-            <motion.button
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.8 }}
-              onClick={handleGuestAccess}
-              disabled={isLoading}
-              className="w-full mt-6 h-14 glass-card-light rounded-2xl text-white font-semibold hover:bg-white/10 transition-all flex items-center justify-center gap-2"
-            >
-              <User className="w-5 h-5" />
-              Continue as Guest (Patient)
-              <ArrowRight className="w-4 h-4" />
-            </motion.button>
-          </motion.div>
+            <div className="mb-6">
+              <Label className={`mb-3 block ${isDark ? "text-slate-300" : "text-slate-700"}`}>
+                {t("patient")} / {t("doctor")}
+              </Label>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { value: "patient" as UserRole, icon: User, label: t("patient") },
+                  { value: "doctor" as UserRole, icon: Stethoscope, label: t("doctor") },
+                ].map((r) => (
+                  <button
+                    key={r.value}
+                    onClick={() => setRole(r.value)}
+                    className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${
+                      role === r.value
+                        ? isDark
+                          ? "border-red-500 bg-red-500/20"
+                          : "border-red-500 bg-red-50"
+                        : isDark
+                        ? "border-slate-700 hover:border-slate-600"
+                        : "border-slate-200 hover:border-slate-300"
+                    }`}
+                  >
+                    <r.icon
+                      className={`w-6 h-6 ${
+                        role === r.value
+                          ? isDark
+                            ? "text-red-400"
+                            : "text-red-500"
+                          : isDark
+                          ? "text-slate-400"
+                          : "text-slate-500"
+                      }`}
+                    />
+                    <span
+                      className={`font-medium ${
+                        role === r.value
+                          ? isDark
+                            ? "text-red-400"
+                            : "text-red-600"
+                          : isDark
+                          ? "text-slate-300"
+                          : "text-slate-700"
+                      }`}
+                    >
+                      {r.label}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
 
-          <motion.div
-            initial={{ opacity: 0, x: 30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.3 }}
-            className="glass-card rounded-3xl p-8"
-          >
-            <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-3">
-              <Lock className="w-5 h-5 text-blue-400" />
-              Staff Login
-            </h2>
-
-            <form onSubmit={handleLogin} className="space-y-5">
-              {error && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="status-critical rounded-xl p-4 flex items-center gap-3"
-                >
-                  <AlertCircle className="w-5 h-5 text-red-400" />
-                  <span className="text-red-300 text-sm">{error}</span>
-                </motion.div>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {mode === "signup" && (
+                <div className="space-y-2">
+                  <Label className={isDark ? "text-slate-300" : "text-slate-700"}>
+                    {t("name")}
+                  </Label>
+                  <div className="relative">
+                    <User
+                      className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${
+                        isDark ? "text-slate-500" : "text-slate-400"
+                      }`}
+                    />
+                    <Input
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder={t("name")}
+                      className={`pl-10 h-12 ${
+                        isDark
+                          ? "bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500"
+                          : "bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400"
+                      }`}
+                    />
+                  </div>
+                </div>
               )}
 
               <div className="space-y-2">
-                <Label className="text-slate-300 text-sm">Role</Label>
-                <div className="grid grid-cols-3 gap-2">
-                  {(["doctor", "nurse", "admin"] as UserRole[]).map((role) => (
-                    <button
-                      key={role}
-                      type="button"
-                      onClick={() => setSelectedRole(role)}
-                      className={`p-3 rounded-xl text-sm font-medium transition-all ${
-                        selectedRole === role
-                          ? "bg-gradient-to-r from-red-500 to-orange-500 text-white shadow-lg shadow-red-500/30"
-                          : "glass-card-light text-slate-300 hover:bg-white/10"
-                      }`}
-                    >
-                      {role.charAt(0).toUpperCase() + role.slice(1)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-slate-300 text-sm">Username / Employee ID</Label>
+                <Label className={isDark ? "text-slate-300" : "text-slate-700"}>{t("email")}</Label>
                 <div className="relative">
-                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                  <Mail
+                    className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${
+                      isDark ? "text-slate-500" : "text-slate-400"
+                    }`}
+                  />
                   <Input
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    placeholder="Enter your username"
-                    className="h-14 pl-12 glass-card border-slate-700 text-white placeholder:text-slate-500 rounded-xl focus:ring-2 focus:ring-red-500/50 focus:border-red-500"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder={t("email")}
+                    className={`pl-10 h-12 ${
+                      isDark
+                        ? "bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500"
+                        : "bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400"
+                    }`}
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label className="text-slate-300 text-sm">Password</Label>
+                <Label className={isDark ? "text-slate-300" : "text-slate-700"}>
+                  {t("password")}
+                </Label>
                 <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                  <Lock
+                    className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${
+                      isDark ? "text-slate-500" : "text-slate-400"
+                    }`}
+                  />
                   <Input
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter your password"
-                    className="h-14 pl-12 glass-card border-slate-700 text-white placeholder:text-slate-500 rounded-xl focus:ring-2 focus:ring-red-500/50 focus:border-red-500"
+                    placeholder={t("password")}
+                    className={`pl-10 h-12 ${
+                      isDark
+                        ? "bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500"
+                        : "bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400"
+                    }`}
                   />
                 </div>
               </div>
 
+              {error && (
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="text-red-500 text-sm text-center"
+                >
+                  {error}
+                </motion.p>
+              )}
+
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="w-full h-14 text-lg font-bold bg-gradient-to-r from-red-600 to-orange-500 hover:from-red-500 hover:to-orange-400 rounded-xl shadow-lg shadow-red-500/30 transition-all"
+                className="w-full h-12 bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white font-semibold text-lg rounded-xl"
               >
                 {isLoading ? (
-                  <div className="flex items-center gap-3">
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Signing in...
-                  </div>
+                  <Loader2 className="w-5 h-5 animate-spin" />
                 ) : (
                   <>
-                    Sign In
+                    {mode === "login" ? t("login") : t("signup")}
                     <ArrowRight className="w-5 h-5 ml-2" />
                   </>
                 )}
               </Button>
             </form>
 
-            <div className="mt-6 pt-6 border-t border-slate-700/50">
-              <p className="text-slate-500 text-xs text-center">
-                Demo credentials: Any username/password works for testing
-              </p>
-            </div>
+            {mode === "login" && (
+              <div
+                className={`mt-6 p-4 rounded-xl ${isDark ? "bg-slate-800/50" : "bg-slate-50"}`}
+              >
+                <p className={`text-sm mb-2 ${isDark ? "text-slate-400" : "text-slate-600"}`}>
+                  Demo Credentials:
+                </p>
+                <div className={`text-xs space-y-1 ${isDark ? "text-slate-500" : "text-slate-500"}`}>
+                  <p>Doctor: doctor@medcare.com / doctor123</p>
+                  <p>Patient: patient@example.com / patient123</p>
+                </div>
+              </div>
+            )}
           </motion.div>
         </div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.9 }}
-          className="mt-12 text-center"
-        >
-          <div className="flex items-center justify-center gap-8 text-sm text-slate-500">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-              <span>HIPAA Compliant</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
-              <span>256-bit Encryption</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" />
-              <span>24/7 Support</span>
-            </div>
-          </div>
-        </motion.div>
       </div>
     </div>
   );

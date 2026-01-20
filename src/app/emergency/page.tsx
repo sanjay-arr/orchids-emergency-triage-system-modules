@@ -1,10 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { EmergencyCaseIntake } from "@/components/emergency/EmergencyCaseIntake";
 import { SmartQuestionFlow } from "@/components/emergency/SmartQuestionFlow";
 import { CaseSummary } from "@/components/emergency/CaseSummary";
+import { useTheme } from "@/context/ThemeContext";
+import { useLanguage } from "@/context/LanguageContext";
+import { Button } from "@/components/ui/button";
+import { LANGUAGES } from "@/lib/emergency-types";
 import {
   EmergencyCategory,
   PatientType,
@@ -13,9 +17,8 @@ import {
   PatientInfo,
   QuestionResponse,
 } from "@/lib/emergency-types";
-import { Button } from "@/components/ui/button";
-import { LogOut, LayoutDashboard } from "lucide-react";
-import Link from "next/link";
+import { ArrowLeft, Sun, Moon, Globe, Heart } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 type AppStage = "intake" | "questions" | "complete";
 
@@ -32,18 +35,16 @@ interface CaseData {
   responses: QuestionResponse[];
 }
 
-export default function EmergencyPage() {
+export default function EmergencyIntakePage() {
   const router = useRouter();
+  const { theme, toggleTheme } = useTheme();
+  const { language, setLanguage } = useLanguage();
+  const [showLangMenu, setShowLangMenu] = useState(false);
+
   const [stage, setStage] = useState<AppStage>("intake");
   const [caseData, setCaseData] = useState<CaseData | null>(null);
-  const [user, setUser] = useState<{ name: string; role: string } | null>(null);
 
-  useEffect(() => {
-    const storedUser = localStorage.getItem("emergency_user");
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-  }, []);
+  const isDark = theme === "dark";
 
   const handleCaseCreated = (data: {
     caseId: string;
@@ -65,23 +66,10 @@ export default function EmergencyPage() {
 
   const handleQuestionsComplete = (responses: QuestionResponse[]) => {
     if (caseData) {
-      const updatedCaseData = {
+      setCaseData({
         ...caseData,
         responses,
-      };
-      setCaseData(updatedCaseData);
-      
-      const existingCases = JSON.parse(localStorage.getItem("emergency_cases") || "[]");
-      existingCases.push({
-        ...updatedCaseData,
-        arrivalTime: updatedCaseData.arrivalTime.toISOString(),
-        responses: updatedCaseData.responses.map(r => ({
-          ...r,
-          timestamp: r.timestamp.toISOString()
-        }))
       });
-      localStorage.setItem("emergency_cases", JSON.stringify(existingCases));
-      
       setStage("complete");
     }
   };
@@ -100,37 +88,84 @@ export default function EmergencyPage() {
     setStage("intake");
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("emergency_user");
-    router.push("/login");
-  };
-
-  const isStaff = user?.role === "doctor" || user?.role === "nurse" || user?.role === "admin";
-
   return (
-    <div className="relative">
-      <div className="fixed top-4 right-4 z-50 flex items-center gap-3">
-        {isStaff && (
-          <Link href="/dashboard">
-            <Button variant="outline" className="glass-card border-slate-700 text-slate-300 hover:bg-slate-700">
-              <LayoutDashboard className="w-4 h-4 mr-2" />
-              Dashboard
-            </Button>
-          </Link>
-        )}
+    <div className="relative min-h-screen">
+      <div className="fixed top-4 left-4 z-50 flex items-center gap-3">
         <Button
-          onClick={handleLogout}
-          variant="outline"
-          className="glass-card border-slate-700 text-slate-300 hover:bg-slate-700"
+          variant="ghost"
+          onClick={() => router.push("/dashboard")}
+          className={`${
+            isDark ? "text-slate-400 hover:text-white hover:bg-slate-800" : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+          }`}
         >
-          <LogOut className="w-4 h-4 mr-2" />
-          Logout
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back
         </Button>
+        <div className="flex items-center gap-2">
+          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isDark ? "bg-red-500/20" : "bg-red-100"}`}>
+            <Heart className={`w-4 h-4 ${isDark ? "text-red-400" : "text-red-500"}`} />
+          </div>
+          <span className={`font-semibold ${isDark ? "text-white" : "text-slate-900"}`}>MedEmergency</span>
+        </div>
       </div>
 
-      {stage === "intake" && (
-        <EmergencyCaseIntake onCaseCreated={handleCaseCreated} />
-      )}
+      <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
+        <div className="relative">
+          <button
+            onClick={() => setShowLangMenu(!showLangMenu)}
+            className={`p-2 rounded-lg transition-all ${
+              isDark
+                ? "bg-slate-800/80 hover:bg-slate-700 text-white border border-slate-700"
+                : "bg-white/80 hover:bg-white text-slate-800 border border-slate-200 shadow"
+            }`}
+          >
+            <Globe className="w-5 h-5" />
+          </button>
+          <AnimatePresence>
+            {showLangMenu && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className={`absolute right-0 mt-2 rounded-xl overflow-hidden shadow-xl ${
+                  isDark ? "bg-slate-800 border border-slate-700" : "bg-white border border-slate-200"
+                }`}
+              >
+                {LANGUAGES.map((lang) => (
+                  <button
+                    key={lang.value}
+                    onClick={() => {
+                      setLanguage(lang.value);
+                      setShowLangMenu(false);
+                    }}
+                    className={`w-full px-4 py-3 text-left flex items-center gap-3 transition-colors ${
+                      language === lang.value
+                        ? isDark ? "bg-red-500/20 text-red-400" : "bg-red-50 text-red-600"
+                        : isDark ? "hover:bg-slate-700 text-slate-300" : "hover:bg-slate-50 text-slate-700"
+                    }`}
+                  >
+                    <span className="font-medium">{lang.native}</span>
+                    <span className="text-xs opacity-60">{lang.label}</span>
+                  </button>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        <button
+          onClick={toggleTheme}
+          className={`p-2 rounded-lg transition-all ${
+            isDark
+              ? "bg-slate-800/80 hover:bg-slate-700 text-yellow-400 border border-slate-700"
+              : "bg-white/80 hover:bg-white text-slate-800 border border-slate-200 shadow"
+          }`}
+        >
+          {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+        </button>
+      </div>
+
+      {stage === "intake" && <EmergencyCaseIntake onCaseCreated={handleCaseCreated} />}
 
       {stage === "questions" && caseData && (
         <SmartQuestionFlow
