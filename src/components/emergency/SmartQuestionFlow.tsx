@@ -19,10 +19,13 @@ import {
   AlertTriangle,
   CheckCircle2,
   SkipForward,
-  ChevronRight,
   Shield,
   Clock,
   FileText,
+  Mic,
+  Activity,
+  Sparkles,
+  Zap,
 } from "lucide-react";
 
 interface SmartQuestionFlowProps {
@@ -146,81 +149,131 @@ export function SmartQuestionFlow({
 
   if (!currentQuestion) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-white mb-2">All Questions Completed</h2>
-          <p className="text-slate-400">Processing responses...</p>
-        </div>
+      <div className="min-h-screen bg-[#0a0f1a] flex items-center justify-center">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="text-center"
+        >
+          <div className="relative inline-block mb-6">
+            <div className="absolute inset-0 bg-emerald-500/20 rounded-full blur-xl animate-pulse" />
+            <div className="relative w-24 h-24 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-full flex items-center justify-center">
+              <CheckCircle2 className="w-12 h-12 text-white" />
+            </div>
+          </div>
+          <h2 className="text-3xl font-bold text-white mb-3">Assessment Complete</h2>
+          <p className="text-slate-400 text-lg">Processing your responses...</p>
+        </motion.div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-red-950 to-slate-900">
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-red-500/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-orange-500/10 rounded-full blur-3xl" />
+    <div className="min-h-screen bg-[#0a0f1a] relative overflow-hidden">
+      <div className="absolute inset-0">
+        <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top,rgba(220,38,38,0.1),transparent_50%)]" />
+        <div className="absolute bottom-0 right-0 w-full h-full bg-[radial-gradient(ellipse_at_bottom_right,rgba(234,88,12,0.08),transparent_50%)]" />
+        <div className="absolute inset-0 dot-pattern opacity-20" />
       </div>
 
-      <div className="relative z-10 container mx-auto px-4 py-6 max-w-4xl">
-        <div className="flex items-center justify-between mb-6">
+      <div className="absolute top-1/4 left-10 w-64 h-64 bg-red-500/5 rounded-full blur-[80px]" />
+      <div className="absolute bottom-1/4 right-10 w-80 h-80 bg-orange-500/5 rounded-full blur-[100px]" />
+
+      <div className="relative z-10 container mx-auto px-4 py-8 max-w-4xl">
+        <motion.header
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center justify-between mb-8"
+        >
           <div className="flex items-center gap-4">
-            <div className="bg-slate-800/50 border border-slate-700 rounded-lg px-4 py-2">
-              <span className="text-xs text-slate-500">Case</span>
-              <p className="text-sm font-mono text-red-400">{caseId}</p>
+            <div className="glass-card rounded-2xl px-5 py-3">
+              <span className="text-xs text-slate-500 uppercase tracking-wider">Case ID</span>
+              <p className="text-sm font-mono text-red-400 font-bold">{caseId}</p>
             </div>
-            <div className="bg-slate-800/50 border border-slate-700 rounded-lg px-4 py-2">
-              <span className="text-xs text-slate-500">Patient</span>
-              <p className="text-sm text-white font-medium">{patientName}</p>
+            <div className="glass-card rounded-2xl px-5 py-3">
+              <span className="text-xs text-slate-500 uppercase tracking-wider">Patient</span>
+              <p className="text-sm text-white font-semibold">{patientName}</p>
             </div>
           </div>
 
-          <div
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg border ${
+          <motion.div
+            initial={{ scale: 0.9 }}
+            animate={{ scale: 1 }}
+            className={`flex items-center gap-3 px-5 py-3 rounded-2xl ${
               currentPriority === "critical"
-                ? "bg-red-500/20 border-red-500/50"
+                ? "status-critical"
                 : currentPriority === "urgent"
-                ? "bg-amber-500/20 border-amber-500/50"
-                : "bg-emerald-500/20 border-emerald-500/50"
+                ? "status-urgent"
+                : "status-normal"
             }`}
           >
-            <div
-              className={`w-2 h-2 rounded-full animate-pulse ${PRIORITY_CONFIG[currentPriority].bgColor}`}
-            />
-            <span className={`font-semibold ${PRIORITY_CONFIG[currentPriority].color}`}>
+            <div className={`w-3 h-3 rounded-full animate-pulse ${PRIORITY_CONFIG[currentPriority].bgColor}`} />
+            <span className={`font-bold ${PRIORITY_CONFIG[currentPriority].color}`}>
               {PRIORITY_CONFIG[currentPriority].label}
             </span>
-          </div>
-        </div>
+            <Activity className={`w-5 h-5 ${PRIORITY_CONFIG[currentPriority].color}`} />
+          </motion.div>
+        </motion.header>
 
-        <div className="bg-slate-800/30 border border-slate-700 rounded-xl p-6 mb-6">
-          <div className="flex items-center gap-4 mb-4">
-            <span className="text-4xl">{categoryInfo?.icon}</span>
-            <div>
-              <h2 className="text-xl font-semibold text-white">{categoryInfo?.label} Assessment</h2>
-              <p className="text-slate-400 text-sm">
-                Question {currentQuestionIndex + 1} of {activeQuestions.length}
-              </p>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="glass-card rounded-3xl p-6 mb-8"
+        >
+          <div className="flex items-center gap-5 mb-6">
+            <div className="w-16 h-16 bg-gradient-to-br from-red-500/20 to-orange-500/20 rounded-2xl flex items-center justify-center border border-red-500/20">
+              <span className="text-4xl">{categoryInfo?.icon}</span>
+            </div>
+            <div className="flex-1">
+              <h2 className="text-2xl font-bold text-white mb-1">{categoryInfo?.label} Assessment</h2>
+              <div className="flex items-center gap-4 text-sm">
+                <span className="text-slate-400">
+                  Question <span className="text-white font-semibold">{currentQuestionIndex + 1}</span> of {activeQuestions.length}
+                </span>
+                <span className="text-slate-600">•</span>
+                <span className="text-slate-400 flex items-center gap-1">
+                  <Mic className="w-4 h-4 text-emerald-400" />
+                  Voice enabled
+                </span>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-3xl font-bold text-gradient">{Math.round(progress)}%</div>
+              <span className="text-xs text-slate-500">Complete</span>
             </div>
           </div>
 
-          <Progress value={progress} className="h-2 bg-slate-700" />
-        </div>
+          <div className="relative h-3 bg-slate-800 rounded-full overflow-hidden">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${progress}%` }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+              className="absolute inset-y-0 left-0 bg-gradient-to-r from-red-500 to-orange-500 rounded-full"
+            />
+            <div className="absolute inset-0 animate-shimmer" />
+          </div>
+        </motion.div>
 
         <AnimatePresence mode="wait">
           {severityDetected && (
             <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-6 p-4 bg-red-500/20 border border-red-500/50 rounded-lg flex items-center gap-3"
+              initial={{ opacity: 0, y: -20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -20, scale: 0.95 }}
+              className="mb-8 status-critical rounded-2xl p-5"
             >
-              <AlertTriangle className="w-6 h-6 text-red-400" />
-              <div>
-                <p className="text-red-300 font-semibold">Severity Escalated</p>
-                <p className="text-red-400/80 text-sm">
-                  Critical symptoms detected. Priority upgraded automatically.
-                </p>
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-red-500/30 rounded-xl flex items-center justify-center">
+                  <Zap className="w-6 h-6 text-red-400" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-red-300 font-bold text-lg">Priority Escalated</p>
+                  <p className="text-red-400/80 text-sm">
+                    Critical symptoms detected. Case has been upgraded to highest priority.
+                  </p>
+                </div>
+                <AlertTriangle className="w-8 h-8 text-red-400 animate-pulse" />
               </div>
             </motion.div>
           )}
@@ -228,81 +281,99 @@ export function SmartQuestionFlow({
 
         <motion.div
           key={currentQuestion.id}
-          initial={{ opacity: 0, x: 20 }}
+          initial={{ opacity: 0, x: 30 }}
           animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -20 }}
-          className="bg-slate-800/50 border border-slate-700 rounded-xl p-6"
+          exit={{ opacity: 0, x: -30 }}
+          transition={{ duration: 0.4 }}
+          className="glass-card rounded-3xl p-8 mb-8"
         >
-          <div className="flex items-start gap-3 mb-6">
+          <div className="flex items-start gap-4 mb-8">
             {currentQuestion.criticalFlag && (
-              <Shield className="w-5 h-5 text-red-400 mt-1 shrink-0" />
+              <div className="w-10 h-10 bg-red-500/20 rounded-xl flex items-center justify-center shrink-0">
+                <Shield className="w-5 h-5 text-red-400" />
+              </div>
             )}
             <div className="flex-1">
-              <h3 className="text-xl font-medium text-white mb-2">
+              <h3 className="text-2xl font-semibold text-white mb-2 leading-relaxed">
                 {currentQuestion.text}
               </h3>
               {currentQuestion.required && (
-                <span className="text-xs text-red-400">* Required</span>
+                <span className="inline-flex items-center gap-1 text-xs text-red-400 bg-red-500/10 px-2 py-1 rounded-full">
+                  <Sparkles className="w-3 h-3" />
+                  Required
+                </span>
               )}
             </div>
           </div>
 
           {currentQuestion.type === "yes_no" && (
             <div className="grid grid-cols-2 gap-4 mb-6">
-              <Button
+              <motion.button
+                whileHover={{ scale: 1.02, y: -2 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => handleYesNo("Yes")}
-                className="h-16 text-lg bg-emerald-600 hover:bg-emerald-700"
+                className="h-20 text-xl font-bold bg-gradient-to-br from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white rounded-2xl shadow-lg shadow-emerald-500/30 transition-all"
               >
                 Yes
-              </Button>
-              <Button
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.02, y: -2 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => handleYesNo("No")}
-                className="h-16 text-lg bg-slate-700 hover:bg-slate-600"
+                className="h-20 text-xl font-bold bg-slate-700 hover:bg-slate-600 text-white rounded-2xl transition-all"
               >
                 No
-              </Button>
+              </motion.button>
             </div>
           )}
 
           {currentQuestion.type === "select" && currentQuestion.options && (
-            <div className="grid grid-cols-2 gap-3 mb-6">
-              {currentQuestion.options.map((option) => (
-                <Button
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              {currentQuestion.options.map((option, idx) => (
+                <motion.button
                   key={option}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.05 }}
+                  whileHover={{ scale: 1.02, y: -2 }}
+                  whileTap={{ scale: 0.98 }}
                   onClick={() => handleSelectOption(option)}
-                  variant="outline"
-                  className="h-auto py-4 px-4 text-left bg-slate-800/50 border-slate-700 text-white hover:bg-slate-700 hover:border-red-500/50"
+                  className="h-auto py-5 px-5 text-left glass-card-light rounded-2xl text-white hover:ring-2 hover:ring-red-500/50 transition-all"
                 >
                   {option}
-                </Button>
+                </motion.button>
               ))}
             </div>
           )}
 
           {currentQuestion.type === "multiple" && currentQuestion.options && (
             <div className="space-y-3 mb-6">
-              {currentQuestion.options.map((option) => (
-                <label
+              {currentQuestion.options.map((option, idx) => (
+                <motion.label
                   key={option}
-                  className={`flex items-center gap-3 p-4 rounded-lg border cursor-pointer transition-all ${
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: idx * 0.05 }}
+                  className={`flex items-center gap-4 p-5 rounded-2xl cursor-pointer transition-all ${
                     selectedOptions.includes(option)
-                      ? "border-red-500 bg-red-500/20"
-                      : "border-slate-700 bg-slate-800/50 hover:border-slate-600"
+                      ? "ring-2 ring-red-500 bg-red-500/10"
+                      : "glass-card-light hover:ring-1 hover:ring-slate-600"
                   }`}
                 >
                   <Checkbox
                     checked={selectedOptions.includes(option)}
                     onCheckedChange={() => toggleOption(option)}
+                    className="data-[state=checked]:bg-red-500 data-[state=checked]:border-red-500"
                   />
-                  <span className="text-white">{option}</span>
-                </label>
+                  <span className="text-white text-lg">{option}</span>
+                </motion.label>
               ))}
               <Button
                 onClick={handleMultipleSelect}
                 disabled={selectedOptions.length === 0}
-                className="w-full mt-4 bg-emerald-600 hover:bg-emerald-700"
+                className="w-full mt-6 h-14 text-lg font-bold bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 rounded-2xl shadow-lg shadow-emerald-500/30"
               >
-                <CheckCircle2 className="w-4 h-4 mr-2" />
+                <CheckCircle2 className="w-5 h-5 mr-2" />
                 Confirm Selection ({selectedOptions.length})
               </Button>
             </div>
@@ -317,15 +388,15 @@ export function SmartQuestionFlow({
             />
           )}
 
-          <div className="flex items-center justify-between pt-4 border-t border-slate-700 mt-6">
-            <div className="flex items-center gap-4 text-sm text-slate-500">
-              <div className="flex items-center gap-1">
-                <FileText className="w-4 h-4" />
-                {responses.length} answered
+          <div className="flex items-center justify-between pt-6 border-t border-slate-700/50 mt-8">
+            <div className="flex items-center gap-6 text-sm text-slate-500">
+              <div className="flex items-center gap-2 glass-card-light px-3 py-2 rounded-xl">
+                <FileText className="w-4 h-4 text-blue-400" />
+                <span>{responses.length} answered</span>
               </div>
-              <div className="flex items-center gap-1">
-                <Clock className="w-4 h-4" />
-                {activeQuestions.length - currentQuestionIndex - 1} remaining
+              <div className="flex items-center gap-2 glass-card-light px-3 py-2 rounded-xl">
+                <Clock className="w-4 h-4 text-amber-400" />
+                <span>{activeQuestions.length - currentQuestionIndex - 1} remaining</span>
               </div>
             </div>
 
@@ -333,7 +404,7 @@ export function SmartQuestionFlow({
               <Button
                 variant="ghost"
                 onClick={handleSkip}
-                className="text-slate-400 hover:text-white"
+                className="text-slate-400 hover:text-white hover:bg-slate-800"
               >
                 <SkipForward className="w-4 h-4 mr-2" />
                 Skip Question
@@ -343,20 +414,27 @@ export function SmartQuestionFlow({
         </motion.div>
 
         {responses.length > 0 && (
-          <div className="mt-6 bg-slate-800/30 border border-slate-700 rounded-xl p-4">
-            <h4 className="text-sm font-medium text-slate-400 mb-3">Recent Answers</h4>
-            <div className="space-y-2 max-h-40 overflow-y-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="glass-card rounded-2xl p-5"
+          >
+            <h4 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">Recent Answers</h4>
+            <div className="space-y-2 max-h-32 overflow-y-auto">
               {responses.slice(-3).map((r, i) => (
-                <div
+                <motion.div
                   key={i}
-                  className="flex items-center justify-between text-sm bg-slate-800/50 rounded-lg px-3 py-2"
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                  className="flex items-center justify-between text-sm glass-card-light rounded-xl px-4 py-3"
                 >
                   <span className="text-slate-400 truncate max-w-[60%]">{r.question}</span>
-                  <span className="text-white font-medium">{r.answer}</span>
-                </div>
+                  <span className="text-white font-semibold bg-slate-700/50 px-3 py-1 rounded-lg">{r.answer}</span>
+                </motion.div>
               ))}
             </div>
-          </div>
+          </motion.div>
         )}
       </div>
     </div>
