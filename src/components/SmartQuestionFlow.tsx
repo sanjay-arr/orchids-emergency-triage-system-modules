@@ -47,11 +47,19 @@ export function SmartQuestionFlow({
   const progress = ((currentIndex + 1) / questions.length) * 100;
 
   const handleOptionSelect = (option: string) => {
-    setResponses({
+    const newResponses = {
       ...responses,
       [currentQuestion.id]: option,
-    });
-    moveNext();
+    };
+    setResponses(newResponses);
+    // Auto-advance for multiple-choice
+    setTimeout(() => {
+      if (currentIndex < questions.length - 1) {
+        setCurrentIndex(currentIndex + 1);
+      } else {
+        onComplete(newResponses);
+      }
+    }, 500); // Small delay for visual feedback
   };
 
   const handleTextSubmit = () => {
@@ -176,15 +184,47 @@ export function SmartQuestionFlow({
                   currentQuestion.priority.slice(1)}{" "}
                 Priority
               </div>
-              <motion.button
-                whileHover={{ scale: 1.1, rotate: 20 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={speakQuestion}
-                className="p-2 rounded-lg bg-slate-700/50 hover:bg-slate-700 transition-all"
-                title="Speak question"
-              >
-                <Volume2 className="w-5 h-5 text-blue-400" />
-              </motion.button>
+              {currentQuestion.type === "multiple-choice" && (
+                <div className="flex gap-2">
+                  <motion.button
+                    whileHover={{ scale: 1.1, rotate: 20 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={speakQuestion}
+                    className={`p-2 rounded-lg transition-all ${
+                      !showTypedAnswer
+                        ? "bg-blue-500/20 border border-blue-500"
+                        : "bg-slate-700/50 hover:bg-slate-700"
+                    }`}
+                    title="Speak question"
+                  >
+                    <Volume2 className="w-5 h-5 text-blue-400" />
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setShowTypedAnswer(!showTypedAnswer)}
+                    className={`p-2 rounded-lg transition-all ${
+                      showTypedAnswer
+                        ? "bg-purple-500/20 border border-purple-500"
+                        : "bg-slate-700/50 hover:bg-slate-700"
+                    }`}
+                    title="Type your answer"
+                  >
+                    <MessageSquare className="w-5 h-5 text-purple-400" />
+                  </motion.button>
+                </div>
+              )}
+              {currentQuestion.type !== "multiple-choice" && (
+                <motion.button
+                  whileHover={{ scale: 1.1, rotate: 20 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={speakQuestion}
+                  className="p-2 rounded-lg bg-slate-700/50 hover:bg-slate-700 transition-all"
+                  title="Speak question"
+                >
+                  <Volume2 className="w-5 h-5 text-blue-400" />
+                </motion.button>
+              )}
             </div>
 
             {/* Question Text */}
@@ -271,16 +311,14 @@ export function SmartQuestionFlow({
 
             {/* Type Answer Button */}
             {currentQuestion.type === "multiple-choice" &&
-              !showTypedAnswer && (
-                <motion.button
+              showTypedAnswer && (
+                <motion.p
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  onClick={() => setShowTypedAnswer(true)}
-                  className="text-sm text-slate-400 hover:text-slate-300 flex items-center gap-2 transition-colors mb-6"
+                  className="text-xs text-slate-400 mb-3"
                 >
-                  <MessageSquare className="w-4 h-4" />
-                  {t("questions_type_answer")}
-                </motion.button>
+                  Or type your custom answer below
+                </motion.p>
               )}
           </motion.div>
         </AnimatePresence>

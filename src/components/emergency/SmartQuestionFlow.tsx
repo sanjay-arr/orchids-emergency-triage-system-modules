@@ -10,9 +10,9 @@ import {
   PRIORITY_CONFIG,
   EMERGENCY_CATEGORIES,
 } from "@/lib/emergency-types";
-import { EmergencyQuestion, getQuestionsForCategory, shouldShowFollowUp, EMERGENCY_QUESTIONS } from "@/lib/emergency-questions";
+import { getQuestionsForCategory } from "@/lib/emergency-questions-multilang";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -41,9 +41,13 @@ interface SmartQuestionFlowProps {
 }
 
 const LANGUAGES = [
-  { value: "en" as Language, label: "English", native: "English" },
-  { value: "ta" as Language, label: "Tamil", native: "தமிழ்" },
-  { value: "hi" as Language, label: "Hindi", native: "हिन्दी" },
+  { value: "en", label: "English", native: "English" },
+  { value: "es", label: "Spanish", native: "Español" },
+  { value: "fr", label: "French", native: "Français" },
+  { value: "de", label: "German", native: "Deutsch" },
+  { value: "hi", label: "Hindi", native: "हिन्दी" },
+  { value: "pt", label: "Portuguese", native: "Português" },
+  { value: "zh", label: "Chinese", native: "中文" },
 ];
 
 export function SmartQuestionFlow({
@@ -56,58 +60,38 @@ export function SmartQuestionFlow({
 }: SmartQuestionFlowProps) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [responses, setResponses] = useState<QuestionResponse[]>([]);
-  const [skippedQuestions, setSkippedQuestions] = useState<Set<string>>(new Set());
-  const [followUpQueue, setFollowUpQueue] = useState<string[]>([]);
-  const [currentPriority, setCurrentPriority] = useState(priority);
-  const [language, setLanguage] = useState<Language>("en");
+  const [language, setLanguage] = useState("en");
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
-  const [severityDetected, setSeverityDetected] = useState(false);
   const [showLangSelector, setShowLangSelector] = useState(false);
   
   const [isListening, setIsListening] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
   const [transcript, setTranscript] = useState("");
-  const [interimTranscript, setInterimTranscript] = useState("");
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [hasSpokenQuestion, setHasSpokenQuestion] = useState(false);
-  const [waitingForVoice, setWaitingForVoice] = useState(false);
 
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const synthRef = useRef<SpeechSynthesis | null>(null);
 
-  const languageMap: Record<Language, string> = {
-    en: "en-US",
-    ta: "ta-IN",
-    hi: "hi-IN",
-  };
+  // Get category-specific questions
+  const questions = useMemo(
+    () => getQuestionsForCategory(category, language),
+    [category, language]
+  );
 
-  const questions = useMemo(() => getQuestionsForCategory(category), [category]);
-
-  const activeQuestions = useMemo(() => {
-    const baseQuestions = questions.filter(
-      (q) => !skippedQuestions.has(q.id) && !followUpQueue.includes(q.id)
-    );
-    const followUps = followUpQueue
-      .map((id) => EMERGENCY_QUESTIONS.find((q) => q.id === id))
-      .filter(Boolean) as EmergencyQuestion[];
-    return [...baseQuestions, ...followUps];
-  }, [questions, skippedQuestions, followUpQueue]);
-
-  const currentQuestion = activeQuestions[currentQuestionIndex];
-  const progress = ((currentQuestionIndex + 1) / activeQuestions.length) * 100;
-  const isLastQuestion = currentQuestionIndex >= activeQuestions.length - 1;
+  const currentQuestion = questions[currentQuestionIndex];
+  const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
+  const isLastQuestion = currentQuestionIndex >= questions.length - 1;
   const categoryInfo = EMERGENCY_CATEGORIES.find((c) => c.value === category);
 
   const initRecognition = useCallback(() => {
     if (typeof window === "undefined") return null;
 
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const SpeechRecognition = window.SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) return null;
 
     const recognition = new SpeechRecognition();
     recognition.continuous = true;
     recognition.interimResults = true;
-    recognition.lang = languageMap[language];
+    recognition.lang = language === "en" ? "en-US" : language;
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
       let interim = "";
