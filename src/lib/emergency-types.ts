@@ -37,9 +37,18 @@ export interface PatientInfo {
   age: number | null;
   gender: Gender | null;
   phone?: string;
+  address?: string;
   bloodGroup?: string;
   allergies?: string[];
   medications?: string[];
+  medicalHistory?: string[];
+  emergencyContact?: {
+    name: string;
+    relationship: string;
+    phone: string;
+  };
+  arrivalMode?: string;
+  broughtBy?: string;
 }
 
 export interface HospitalInfo {

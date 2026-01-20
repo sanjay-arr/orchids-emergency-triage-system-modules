@@ -19,7 +19,10 @@ import {
   AlertTriangle,
   ArrowLeft,
   Download,
+  File,
 } from "lucide-react";
+import { generateAllPDFs, PatientData } from "@/lib/pdf-templates";
+import Link from "next/link";
 
 interface CaseSummaryProps {
   caseId: string;
@@ -51,6 +54,42 @@ export function CaseSummary({
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleGeneratePDFs = async () => {
+    const patientData: PatientData = {
+      caseId,
+      name: patient.name,
+      age: patient.age || 0,
+      gender: patient.gender || "Not specified",
+      bloodGroup: patient.bloodGroup || "Unknown",
+      phone: patient.phone || "Not provided",
+      address: patient.address || "Not provided",
+      hospitalName,
+      ward,
+      arrivalTime: arrivalTime.toLocaleTimeString(),
+      category: category,
+      priority: priority,
+      symptoms: responses
+        .filter((r) => r.answer.toLowerCase().includes("yes"))
+        .map((r) => r.question),
+      allergies: patient.allergies || [],
+      medications: patient.medications || [],
+      medicalHistory: patient.medicalHistory || [],
+      vitals: {
+        bp: "Not measured",
+        pulse: "Not measured",
+        temperature: "Not measured",
+        respiratoryRate: "Not measured",
+        spO2: "Not measured",
+      },
+      emergencyContact: patient.emergencyContact,
+      arrivalMode: patient.arrivalMode || "Walk-in",
+      broughtBy: patient.broughtBy || "Self",
+      notes: `Emergency case for ${category}. Priority: ${priority}`,
+    };
+
+    await generateAllPDFs(patientData);
   };
 
   return (
@@ -219,6 +258,13 @@ export function CaseSummary({
             >
               <Printer className="w-5 h-5 mr-2" />
               Print Summary
+            </Button>
+            <Button
+              onClick={handleGeneratePDFs}
+              className="flex-1 h-14 bg-blue-600 hover:bg-blue-700"
+            >
+              <FileText className="w-5 h-5 mr-2" />
+              Generate PDFs
             </Button>
           </motion.div>
         </div>
