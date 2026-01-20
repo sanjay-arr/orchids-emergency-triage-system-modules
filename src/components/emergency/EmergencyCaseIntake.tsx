@@ -28,6 +28,11 @@ import {
   Ambulance,
   CheckCircle2,
   Zap,
+  Heart,
+  Shield,
+  Activity,
+  ArrowRight,
+  Sparkles,
 } from "lucide-react";
 
 interface EmergencyCaseIntakeProps {
@@ -68,10 +73,8 @@ export function EmergencyCaseIntake({ onCaseCreated }: EmergencyCaseIntakeProps)
     setArrivalMode(mode);
     if (mode === "ambulance") {
       setPriority("critical");
-      setStep(3);
-    } else {
-      setStep(3);
     }
+    setStep(3);
   };
 
   const handleCategorySelect = (cat: EmergencyCategory) => {
@@ -104,117 +107,180 @@ export function EmergencyCaseIntake({ onCaseCreated }: EmergencyCaseIntakeProps)
   const canSubmit = name.trim() !== "" || isAmbulanceMode;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-red-950 to-slate-900">
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-red-500/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-orange-500/10 rounded-full blur-3xl" />
+    <div className="min-h-screen bg-[#0a0f1a] relative overflow-hidden">
+      <div className="absolute inset-0">
+        <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top_left,rgba(220,38,38,0.15),transparent_50%)]" />
+        <div className="absolute bottom-0 right-0 w-full h-full bg-[radial-gradient(ellipse_at_bottom_right,rgba(234,88,12,0.1),transparent_50%)]" />
+        <div className="absolute inset-0 dot-pattern opacity-30" />
       </div>
 
-      <div className="relative z-10 container mx-auto px-4 py-6 max-w-4xl">
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
+      <div className="absolute top-20 left-20 w-72 h-72 bg-red-500/10 rounded-full blur-[100px] animate-pulse" />
+      <div className="absolute bottom-20 right-20 w-96 h-96 bg-orange-500/10 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '1s' }} />
+
+      <div className="relative z-10 container mx-auto px-4 py-8 max-w-5xl">
+        <motion.header
+          initial={{ opacity: 0, y: -30 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-8"
+          transition={{ duration: 0.6 }}
+          className="text-center mb-10"
         >
-          <div className="inline-flex items-center gap-3 bg-red-500/20 border border-red-500/30 rounded-full px-6 py-3 mb-4">
-            <Zap className="w-5 h-5 text-red-400 animate-pulse" />
-            <span className="text-red-300 font-mono text-sm tracking-wider">
+          <div className="inline-flex items-center justify-center mb-6">
+            <div className="relative">
+              <div className="absolute inset-0 bg-red-500/20 rounded-full blur-xl animate-pulse" />
+              <div className="relative w-20 h-20 bg-gradient-to-br from-red-500 to-orange-500 rounded-2xl flex items-center justify-center shadow-lg shadow-red-500/30 rotate-3">
+                <Heart className="w-10 h-10 text-white animate-heartbeat" />
+              </div>
+            </div>
+          </div>
+
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.2 }}
+            className="inline-flex items-center gap-3 glass-card rounded-full px-6 py-3 mb-6"
+          >
+            <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+            <span className="text-red-400 font-mono text-sm tracking-widest">
               CASE ID: {caseId}
             </span>
-          </div>
-          <h1 className="text-4xl font-bold text-white mb-2 tracking-tight">
-            Emergency Intake
+            <Sparkles className="w-4 h-4 text-amber-400" />
+          </motion.div>
+
+          <h1 className="text-5xl font-bold text-white mb-3 tracking-tight">
+            Emergency <span className="text-gradient">Intake</span>
           </h1>
-          <p className="text-slate-400">Quick patient registration system</p>
+          <p className="text-slate-400 text-lg">Rapid patient registration and triage system</p>
+        </motion.header>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="grid grid-cols-3 gap-4 mb-8"
+        >
+          {[
+            { icon: MapPin, label: "Location", value: hospitalName, color: "blue" },
+            { icon: Shield, label: "Ward", value: ward, color: "amber" },
+            { icon: Clock, label: "Arrival Time", value: new Date().toLocaleTimeString(), color: "emerald" },
+          ].map((item, idx) => (
+            <motion.div
+              key={item.label}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 + idx * 0.1 }}
+              className="glass-card rounded-2xl p-4 flex items-center gap-4 card-hover"
+            >
+              <div className={`w-12 h-12 rounded-xl bg-${item.color}-500/20 flex items-center justify-center`}>
+                <item.icon className={`w-6 h-6 text-${item.color}-400`} />
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 uppercase tracking-wider">{item.label}</p>
+                <p className="text-white font-semibold">{item.value}</p>
+              </div>
+            </motion.div>
+          ))}
         </motion.div>
 
-        <div className="grid grid-cols-3 gap-2 mb-8">
-          <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-3 flex items-center gap-3">
-            <MapPin className="w-5 h-5 text-blue-400" />
-            <div>
-              <p className="text-xs text-slate-500">Location</p>
-              <p className="text-sm text-white font-medium">{hospitalName}</p>
-            </div>
-          </div>
-          <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-3 flex items-center gap-3">
-            <AlertTriangle className="w-5 h-5 text-amber-400" />
-            <div>
-              <p className="text-xs text-slate-500">Ward</p>
-              <p className="text-sm text-white font-medium">{ward}</p>
-            </div>
-          </div>
-          <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-3 flex items-center gap-3">
-            <Clock className="w-5 h-5 text-emerald-400" />
-            <div>
-              <p className="text-xs text-slate-500">Arrival Time</p>
-              <p className="text-sm text-white font-medium">
-                {new Date().toLocaleTimeString()}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {priority !== "normal" && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className={`mb-6 p-4 rounded-lg border ${
-              priority === "critical"
-                ? "bg-red-500/20 border-red-500/50"
-                : "bg-amber-500/20 border-amber-500/50"
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <div
-                className={`w-3 h-3 rounded-full animate-pulse ${PRIORITY_CONFIG[priority].bgColor}`}
-              />
-              <span
-                className={`font-bold text-lg ${PRIORITY_CONFIG[priority].color}`}
-              >
-                {PRIORITY_CONFIG[priority].label.toUpperCase()} PRIORITY
-              </span>
-            </div>
-          </motion.div>
-        )}
-
-        <div className="flex gap-2 mb-8">
-          {[1, 2, 3, 4].map((s) => (
-            <div
-              key={s}
-              className={`h-2 flex-1 rounded-full transition-all duration-300 ${
-                s <= step ? "bg-red-500" : "bg-slate-700"
+        <AnimatePresence mode="wait">
+          {priority !== "normal" && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: -10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: -10 }}
+              className={`mb-8 p-5 rounded-2xl ${
+                priority === "critical" ? "status-critical" : "status-urgent"
               }`}
-            />
-          ))}
-        </div>
+            >
+              <div className="flex items-center gap-4">
+                <div className={`w-4 h-4 rounded-full animate-pulse ${PRIORITY_CONFIG[priority].bgColor}`} />
+                <div className="flex-1">
+                  <span className={`font-bold text-xl ${PRIORITY_CONFIG[priority].color}`}>
+                    {PRIORITY_CONFIG[priority].label.toUpperCase()} PRIORITY
+                  </span>
+                  <p className={`text-sm mt-1 ${priority === "critical" ? "text-red-300/70" : "text-amber-300/70"}`}>
+                    {priority === "critical" ? "Immediate medical attention required" : "Urgent care needed"}
+                  </p>
+                </div>
+                <Activity className={`w-8 h-8 ${PRIORITY_CONFIG[priority].color} animate-pulse`} />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="mb-10"
+        >
+          <div className="flex items-center gap-2 mb-4">
+            {[1, 2, 3, 4].map((s) => (
+              <div key={s} className="flex-1 flex items-center gap-2">
+                <div className={`relative flex-1 h-1.5 rounded-full overflow-hidden ${s <= step ? 'bg-gradient-to-r from-red-500 to-orange-500' : 'bg-slate-800'}`}>
+                  {s <= step && (
+                    <motion.div
+                      initial={{ x: '-100%' }}
+                      animate={{ x: '0%' }}
+                      transition={{ duration: 0.5, delay: s * 0.1 }}
+                      className="absolute inset-0 bg-gradient-to-r from-red-500 to-orange-500"
+                    />
+                  )}
+                </div>
+                {s < 4 && (
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
+                    s < step ? 'bg-gradient-to-r from-red-500 to-orange-500 text-white' : 
+                    s === step ? 'bg-red-500/20 text-red-400 ring-2 ring-red-500' : 
+                    'bg-slate-800 text-slate-500'
+                  }`}>
+                    {s < step ? <CheckCircle2 className="w-4 h-4" /> : s}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-between text-xs text-slate-500 px-1">
+            <span>Info Source</span>
+            <span>Arrival Mode</span>
+            <span>Emergency Type</span>
+            <span>Patient Details</span>
+          </div>
+        </motion.div>
 
         <AnimatePresence mode="wait">
           {step === 1 && (
             <motion.div
               key="step1"
-              initial={{ opacity: 0, x: 20 }}
+              initial={{ opacity: 0, x: 50 }}
               animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="space-y-4"
+              exit={{ opacity: 0, x: -50 }}
+              transition={{ duration: 0.4 }}
+              className="space-y-6"
             >
-              <h2 className="text-xl font-semibold text-white mb-6">
-                Who is providing information?
-              </h2>
-              <div className="grid grid-cols-3 gap-4">
-                {PATIENT_TYPES.map((type) => (
+              <div className="text-center mb-8">
+                <h2 className="text-2xl font-bold text-white mb-2">Who is providing information?</h2>
+                <p className="text-slate-400">Select the person giving patient details</p>
+              </div>
+
+              <div className="grid grid-cols-3 gap-6">
+                {PATIENT_TYPES.map((type, idx) => (
                   <motion.button
                     key={type.value}
-                    whileHover={{ scale: 1.02 }}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.1 }}
+                    whileHover={{ scale: 1.03, y: -4 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => handlePatientTypeSelect(type.value)}
-                    className={`p-6 rounded-xl border-2 transition-all ${
+                    className={`relative p-8 rounded-3xl transition-all duration-300 ${
                       patientType === type.value
-                        ? "border-red-500 bg-red-500/20"
-                        : "border-slate-700 bg-slate-800/50 hover:border-slate-600"
+                        ? "glass-card ring-2 ring-red-500 shadow-lg shadow-red-500/20"
+                        : "glass-card hover:ring-1 hover:ring-slate-600"
                     }`}
                   >
-                    <span className="text-4xl mb-3 block">{type.icon}</span>
-                    <span className="text-white font-medium">{type.label}</span>
+                    <div className="text-6xl mb-4">{type.icon}</div>
+                    <span className="text-white font-semibold text-lg">{type.label}</span>
+                    <div className={`absolute top-4 right-4 w-3 h-3 rounded-full transition-all ${
+                      patientType === type.value ? 'bg-red-500' : 'bg-slate-700'
+                    }`} />
                   </motion.button>
                 ))}
               </div>
@@ -224,41 +290,57 @@ export function EmergencyCaseIntake({ onCaseCreated }: EmergencyCaseIntakeProps)
           {step === 2 && (
             <motion.div
               key="step2"
-              initial={{ opacity: 0, x: 20 }}
+              initial={{ opacity: 0, x: 50 }}
               animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="space-y-4"
+              exit={{ opacity: 0, x: -50 }}
+              transition={{ duration: 0.4 }}
+              className="space-y-6"
             >
-              <h2 className="text-xl font-semibold text-white mb-6">
-                How did the patient arrive?
-              </h2>
-              <div className="grid grid-cols-2 gap-4">
-                {ARRIVAL_MODES.map((mode) => (
+              <div className="text-center mb-8">
+                <h2 className="text-2xl font-bold text-white mb-2">How did the patient arrive?</h2>
+                <p className="text-slate-400">Select the mode of arrival</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-6">
+                {ARRIVAL_MODES.map((mode, idx) => (
                   <motion.button
                     key={mode.value}
-                    whileHover={{ scale: 1.02 }}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.1 }}
+                    whileHover={{ scale: 1.02, y: -4 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => handleArrivalModeSelect(mode.value)}
-                    className={`p-6 rounded-xl border-2 transition-all ${
+                    className={`relative p-8 rounded-3xl transition-all duration-300 ${
+                      mode.value === "ambulance"
+                        ? "glass-card ring-2 ring-red-500/50 bg-red-500/5"
+                        : "glass-card"
+                    } ${
                       arrivalMode === mode.value
-                        ? "border-red-500 bg-red-500/20"
-                        : "border-slate-700 bg-slate-800/50 hover:border-slate-600"
-                    } ${mode.value === "ambulance" ? "ring-2 ring-red-500/50" : ""}`}
+                        ? "ring-2 ring-red-500 shadow-lg shadow-red-500/20"
+                        : "hover:ring-1 hover:ring-slate-600"
+                    }`}
                   >
-                    <span className="text-4xl mb-3 block">{mode.icon}</span>
-                    <span className="text-white font-medium">{mode.label}</span>
                     {mode.value === "ambulance" && (
-                      <p className="text-xs text-red-400 mt-2">Fast Track Mode</p>
+                      <div className="absolute top-4 left-4 px-3 py-1 bg-red-500 rounded-full text-xs text-white font-bold animate-pulse">
+                        FAST TRACK
+                      </div>
+                    )}
+                    <div className="text-6xl mb-4">{mode.icon}</div>
+                    <span className="text-white font-semibold text-lg">{mode.label}</span>
+                    {mode.value === "ambulance" && (
+                      <p className="text-red-400 text-sm mt-2">Priority escalation enabled</p>
                     )}
                   </motion.button>
                 ))}
               </div>
+
               <Button
                 variant="ghost"
                 onClick={() => setStep(1)}
-                className="text-slate-400 mt-4"
+                className="text-slate-400 hover:text-white mt-6"
               >
-                ← Back
+                ← Back to previous step
               </Button>
             </motion.div>
           )}
@@ -266,40 +348,45 @@ export function EmergencyCaseIntake({ onCaseCreated }: EmergencyCaseIntakeProps)
           {step === 3 && (
             <motion.div
               key="step3"
-              initial={{ opacity: 0, x: 20 }}
+              initial={{ opacity: 0, x: 50 }}
               animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="space-y-4"
+              exit={{ opacity: 0, x: -50 }}
+              transition={{ duration: 0.4 }}
+              className="space-y-6"
             >
-              <h2 className="text-xl font-semibold text-white mb-6">
-                Select Emergency Type
-              </h2>
-              <div className="grid grid-cols-3 gap-3">
-                {EMERGENCY_CATEGORIES.map((cat) => (
+              <div className="text-center mb-8">
+                <h2 className="text-2xl font-bold text-white mb-2">Select Emergency Type</h2>
+                <p className="text-slate-400">Choose the primary reason for emergency</p>
+              </div>
+
+              <div className="grid grid-cols-4 gap-4">
+                {EMERGENCY_CATEGORIES.map((cat, idx) => (
                   <motion.button
                     key={cat.value}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: idx * 0.05 }}
+                    whileHover={{ scale: 1.05, y: -4 }}
+                    whileTap={{ scale: 0.95 }}
                     onClick={() => handleCategorySelect(cat.value)}
-                    className={`p-4 rounded-xl border-2 transition-all ${
+                    className={`relative p-5 rounded-2xl transition-all duration-300 ${
                       category === cat.value
-                        ? "border-red-500 bg-red-500/20"
-                        : "border-slate-700 bg-slate-800/50 hover:border-slate-600"
+                        ? "glass-card ring-2 ring-red-500 shadow-lg shadow-red-500/20"
+                        : "glass-card hover:ring-1 hover:ring-slate-600"
                     }`}
                   >
-                    <span className="text-3xl mb-2 block">{cat.icon}</span>
-                    <span className="text-white text-sm font-medium">
-                      {cat.label}
-                    </span>
+                    <div className="text-4xl mb-3">{cat.icon}</div>
+                    <span className="text-white text-sm font-medium block">{cat.label}</span>
                   </motion.button>
                 ))}
               </div>
+
               <Button
                 variant="ghost"
                 onClick={() => setStep(2)}
-                className="text-slate-400 mt-4"
+                className="text-slate-400 hover:text-white mt-6"
               >
-                ← Back
+                ← Back to previous step
               </Button>
             </motion.div>
           )}
@@ -307,78 +394,86 @@ export function EmergencyCaseIntake({ onCaseCreated }: EmergencyCaseIntakeProps)
           {step === 4 && (
             <motion.div
               key="step4"
-              initial={{ opacity: 0, x: 20 }}
+              initial={{ opacity: 0, x: 50 }}
               animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="space-y-6"
+              exit={{ opacity: 0, x: -50 }}
+              transition={{ duration: 0.4 }}
+              className="space-y-8"
             >
-              <h2 className="text-xl font-semibold text-white mb-6">
-                Basic Patient Information
-                {isAmbulanceMode && (
-                  <span className="ml-3 text-sm text-amber-400 font-normal">
-                    (Optional - Fast Track)
-                  </span>
-                )}
-              </h2>
+              <div className="text-center mb-8">
+                <h2 className="text-2xl font-bold text-white mb-2">
+                  Patient Information
+                  {isAmbulanceMode && (
+                    <span className="ml-3 text-sm bg-amber-500/20 text-amber-400 px-3 py-1 rounded-full font-normal">
+                      Optional - Fast Track
+                    </span>
+                  )}
+                </h2>
+                <p className="text-slate-400">Enter basic patient details</p>
+              </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-slate-300">
-                    <User className="w-4 h-4 inline mr-2" />
-                    Patient Name {!isAmbulanceMode && <span className="text-red-400">*</span>}
-                  </Label>
-                  <Input
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Enter patient name"
-                    className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-slate-300">Age</Label>
-                  <Input
-                    type="number"
-                    value={age}
-                    onChange={(e) => setAge(e.target.value)}
-                    placeholder="Age in years"
-                    className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-slate-300">Gender</Label>
-                  <div className="flex gap-2">
-                    {(["male", "female", "other"] as Gender[]).map((g) => (
-                      <Button
-                        key={g}
-                        type="button"
-                        variant={gender === g ? "default" : "outline"}
-                        onClick={() => setGender(g)}
-                        className={`flex-1 ${
-                          gender === g
-                            ? "bg-red-500 hover:bg-red-600"
-                            : "bg-slate-800/50 border-slate-700 text-slate-300 hover:bg-slate-700"
-                        }`}
-                      >
-                        {g.charAt(0).toUpperCase() + g.slice(1)}
-                      </Button>
-                    ))}
+              <div className="glass-card rounded-3xl p-8">
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-3">
+                    <Label className="text-slate-300 flex items-center gap-2 text-sm">
+                      <User className="w-4 h-4 text-blue-400" />
+                      Patient Name {!isAmbulanceMode && <span className="text-red-400">*</span>}
+                    </Label>
+                    <Input
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="Enter patient name"
+                      className="h-12 bg-slate-900/50 border-slate-700 text-white placeholder:text-slate-500 rounded-xl focus:ring-2 focus:ring-red-500/50 focus:border-red-500 transition-all"
+                    />
                   </div>
-                </div>
 
-                <div className="space-y-2">
-                  <Label className="text-slate-300">
-                    <Phone className="w-4 h-4 inline mr-2" />
-                    Contact Phone
-                  </Label>
-                  <Input
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="Phone number"
-                    className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500"
-                  />
+                  <div className="space-y-3">
+                    <Label className="text-slate-300 flex items-center gap-2 text-sm">
+                      <Clock className="w-4 h-4 text-purple-400" />
+                      Age
+                    </Label>
+                    <Input
+                      type="number"
+                      value={age}
+                      onChange={(e) => setAge(e.target.value)}
+                      placeholder="Age in years"
+                      className="h-12 bg-slate-900/50 border-slate-700 text-white placeholder:text-slate-500 rounded-xl focus:ring-2 focus:ring-red-500/50 focus:border-red-500 transition-all"
+                    />
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label className="text-slate-300 text-sm">Gender</Label>
+                    <div className="flex gap-3">
+                      {(["male", "female", "other"] as Gender[]).map((g) => (
+                        <Button
+                          key={g}
+                          type="button"
+                          onClick={() => setGender(g)}
+                          className={`flex-1 h-12 rounded-xl font-medium transition-all duration-300 ${
+                            gender === g
+                              ? "bg-gradient-to-r from-red-500 to-orange-500 text-white shadow-lg shadow-red-500/30"
+                              : "bg-slate-900/50 border border-slate-700 text-slate-300 hover:border-slate-600 hover:bg-slate-800/50"
+                          }`}
+                        >
+                          {g.charAt(0).toUpperCase() + g.slice(1)}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label className="text-slate-300 flex items-center gap-2 text-sm">
+                      <Phone className="w-4 h-4 text-emerald-400" />
+                      Contact Phone
+                    </Label>
+                    <Input
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="Phone number"
+                      className="h-12 bg-slate-900/50 border-slate-700 text-white placeholder:text-slate-500 rounded-xl focus:ring-2 focus:ring-red-500/50 focus:border-red-500 transition-all"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -386,30 +481,30 @@ export function EmergencyCaseIntake({ onCaseCreated }: EmergencyCaseIntakeProps)
                 <Button
                   variant="ghost"
                   onClick={() => setStep(3)}
-                  className="text-slate-400"
+                  className="text-slate-400 hover:text-white px-6"
                 >
                   ← Back
                 </Button>
                 <Button
                   onClick={handleSubmit}
                   disabled={!canSubmit}
-                  className={`flex-1 h-14 text-lg font-semibold ${
+                  className={`flex-1 h-16 text-lg font-bold rounded-2xl transition-all duration-300 ${
                     priority === "critical"
-                      ? "bg-red-600 hover:bg-red-700"
+                      ? "bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 shadow-lg shadow-red-500/40"
                       : priority === "urgent"
-                      ? "bg-amber-600 hover:bg-amber-700"
-                      : "bg-emerald-600 hover:bg-emerald-700"
+                      ? "bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 shadow-lg shadow-amber-500/40"
+                      : "bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 shadow-lg shadow-emerald-500/40"
                   }`}
                 >
                   {isAmbulanceMode ? (
                     <>
-                      <Ambulance className="w-5 h-5 mr-2" />
-                      Fast Track - Start Questions
+                      <Ambulance className="w-6 h-6 mr-3" />
+                      Fast Track - Start Assessment
                     </>
                   ) : (
                     <>
-                      <CheckCircle2 className="w-5 h-5 mr-2" />
-                      Continue to Questions
+                      <ArrowRight className="w-6 h-6 mr-3" />
+                      Continue to Assessment
                     </>
                   )}
                 </Button>
