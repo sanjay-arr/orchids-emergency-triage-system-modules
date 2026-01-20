@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import dynamic from "next/dynamic";
 import {
   CasePriority,
   QuestionResponse,
@@ -11,6 +10,14 @@ import {
   EmergencyCategory,
   EMERGENCY_CATEGORIES,
 } from "@/lib/emergency-types";
+import {
+  generateEmergencyIntakeForm,
+  generateTriageAssessmentForm,
+  generateAllergyMedicationForm,
+  generateAccidentSymptomForm,
+  generateDoctorSummaryForm,
+  downloadPDF,
+} from "@/lib/pdf-generator";
 import { Button } from "@/components/ui/button";
 import {
   CheckCircle2,
@@ -34,36 +41,6 @@ import {
   ClipboardList,
 } from "lucide-react";
 
-const PDFDownloadLink = dynamic(
-  () => import("@react-pdf/renderer").then((mod) => mod.PDFDownloadLink),
-  { ssr: false }
-);
-
-const EmergencyIntakeForm = dynamic(
-  () => import("./PDFForms").then((mod) => mod.EmergencyIntakeForm),
-  { ssr: false }
-);
-
-const TriageAssessmentForm = dynamic(
-  () => import("./PDFForms").then((mod) => mod.TriageAssessmentForm),
-  { ssr: false }
-);
-
-const AllergyMedicationForm = dynamic(
-  () => import("./PDFForms").then((mod) => mod.AllergyMedicationForm),
-  { ssr: false }
-);
-
-const AccidentSymptomForm = dynamic(
-  () => import("./PDFForms").then((mod) => mod.AccidentSymptomForm),
-  { ssr: false }
-);
-
-const DoctorSummaryForm = dynamic(
-  () => import("./PDFForms").then((mod) => mod.DoctorSummaryForm),
-  { ssr: false }
-);
-
 interface CaseSummaryProps {
   caseId: string;
   priority: CasePriority;
@@ -82,7 +59,7 @@ interface FormType {
   description: string;
   icon: React.ElementType;
   color: string;
-  component: React.ComponentType<{ data: FormData }>;
+  generator: (data: FormData) => ReturnType<typeof generateEmergencyIntakeForm>;
 }
 
 interface FormData {
@@ -107,11 +84,7 @@ export function CaseSummary({
   responses,
   onNewCase,
 }: CaseSummaryProps) {
-  const [isClient, setIsClient] = useState(false);
-  
-  useState(() => {
-    setIsClient(true);
-  });
+  const [downloadingForm, setDownloadingForm] = useState<string | null>(null);
 
   const categoryInfo = EMERGENCY_CATEGORIES.find((c) => c.value === category);
   
@@ -133,7 +106,7 @@ export function CaseSummary({
       description: "Initial patient registration",
       icon: ClipboardList,
       color: "from-red-500 to-orange-500",
-      component: EmergencyIntakeForm,
+      generator: generateEmergencyIntakeForm,
     },
     {
       id: "triage",
@@ -141,7 +114,7 @@ export function CaseSummary({
       description: "Priority & vital signs",
       icon: Activity,
       color: "from-amber-500 to-yellow-500",
-      component: TriageAssessmentForm,
+      generator: generateTriageAssessmentForm,
     },
     {
       id: "allergy",
@@ -149,7 +122,7 @@ export function CaseSummary({
       description: "Allergies & current meds",
       icon: Pill,
       color: "from-pink-500 to-rose-500",
-      component: AllergyMedicationForm,
+      generator: generateAllergyMedicationForm,
     },
     {
       id: "accident",
@@ -157,7 +130,7 @@ export function CaseSummary({
       description: "Incident details & injuries",
       icon: Ambulance,
       color: "from-blue-500 to-cyan-500",
-      component: AccidentSymptomForm,
+      generator: generateAccidentSymptomForm,
     },
     {
       id: "doctor",
@@ -165,9 +138,20 @@ export function CaseSummary({
       description: "Clinical summary for review",
       icon: Stethoscope,
       color: "from-emerald-500 to-teal-500",
-      component: DoctorSummaryForm,
+      generator: generateDoctorSummaryForm,
     },
   ];
+
+  const handleDownload = async (form: FormType) => {
+    setDownloadingForm(form.id);
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      const doc = form.generator(formData);
+      downloadPDF(doc, `${form.id}-${caseId}.pdf`);
+    } finally {
+      setDownloadingForm(null);
+    }
+  };
 
   const handlePrint = () => {
     window.print();
@@ -361,54 +345,43 @@ export function CaseSummary({
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-4">
-            {FORM_TYPES.map((form, idx) => {
-              const FormComponent = form.component;
-              return (
-                <motion.div
-                  key={form.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.5 + idx * 0.1 }}
-                  className="glass-card-light rounded-2xl p-4 flex flex-col"
+            {FORM_TYPES.map((form, idx) => (
+              <motion.div
+                key={form.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 + idx * 0.1 }}
+                className="glass-card-light rounded-2xl p-4 flex flex-col"
+              >
+                <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${form.color} flex items-center justify-center mb-3 shadow-lg`}>
+                  <form.icon className="w-6 h-6 text-white" />
+                </div>
+                <h3 className="text-white font-semibold text-sm mb-1">{form.name}</h3>
+                <p className="text-slate-400 text-xs mb-4 flex-1">{form.description}</p>
+                
+                <button
+                  onClick={() => handleDownload(form)}
+                  disabled={downloadingForm === form.id}
+                  className={`w-full py-2 px-3 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                    downloadingForm === form.id
+                      ? "bg-slate-700 text-slate-400 cursor-wait"
+                      : `bg-gradient-to-r ${form.color} text-white hover:opacity-90 shadow-lg`
+                  }`}
                 >
-                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${form.color} flex items-center justify-center mb-3 shadow-lg`}>
-                    <form.icon className="w-6 h-6 text-white" />
-                  </div>
-                  <h3 className="text-white font-semibold text-sm mb-1">{form.name}</h3>
-                  <p className="text-slate-400 text-xs mb-4 flex-1">{form.description}</p>
-                  
-                  {typeof window !== 'undefined' && (
-                    <PDFDownloadLink
-                      document={<FormComponent data={formData} />}
-                      fileName={`${form.id}-${caseId}.pdf`}
-                    >
-                      {({ loading }) => (
-                        <button
-                          disabled={loading}
-                          className={`w-full py-2 px-3 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 ${
-                            loading
-                              ? "bg-slate-700 text-slate-400 cursor-wait"
-                              : `bg-gradient-to-r ${form.color} text-white hover:opacity-90 shadow-lg`
-                          }`}
-                        >
-                          {loading ? (
-                            <>
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                              Generating...
-                            </>
-                          ) : (
-                            <>
-                              <Download className="w-4 h-4" />
-                              Download
-                            </>
-                          )}
-                        </button>
-                      )}
-                    </PDFDownloadLink>
+                  {downloadingForm === form.id ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-4 h-4" />
+                      Download
+                    </>
                   )}
-                </motion.div>
-              );
-            })}
+                </button>
+              </motion.div>
+            ))}
           </div>
         </motion.div>
 
