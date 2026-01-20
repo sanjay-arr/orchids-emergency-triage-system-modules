@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { EmergencyCaseIntake } from "@/components/emergency/EmergencyCaseIntake";
 import { SmartQuestionFlow } from "@/components/emergency/SmartQuestionFlow";
 import { CaseSummary } from "@/components/emergency/CaseSummary";
+import { MedicalForms } from "@/components/emergency/MedicalForms";
 import { useTheme } from "@/context/ThemeContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { Button } from "@/components/ui/button";
@@ -179,17 +180,33 @@ export default function EmergencyIntakePage() {
       )}
 
       {stage === "complete" && caseData && (
-        <CaseSummary
-          caseId={caseData.caseId}
-          priority={caseData.priority}
-          category={caseData.category}
-          patient={caseData.patient}
-          hospitalName={caseData.hospitalName}
-          ward={caseData.ward}
-          arrivalTime={caseData.arrivalTime}
-          responses={caseData.responses}
-          onNewCase={handleNewCase}
-        />
+        <div className={`min-h-screen ${isDark ? "bg-slate-950" : "bg-slate-50"} overflow-y-auto pb-20`}>
+          <CaseSummary
+            caseId={caseData.caseId}
+            priority={caseData.priority}
+            category={caseData.category}
+            patient={caseData.patient}
+            hospitalName={caseData.hospitalName}
+            ward={caseData.ward}
+            arrivalTime={caseData.arrivalTime}
+            responses={caseData.responses}
+            onNewCase={handleNewCase}
+          />
+          <div className="container mx-auto px-4 max-w-4xl">
+            <MedicalForms
+              caseId={caseData.caseId}
+              patient={caseData.patient}
+              category={caseData.category}
+              priority={caseData.priority}
+              arrivalMode={caseData.arrivalMode}
+              hospitalName={caseData.hospitalName}
+              ward={caseData.ward}
+              arrivalTime={caseData.arrivalTime}
+              responses={caseData.responses}
+              isDark={isDark}
+            />
+          </div>
+        </div>
       )}
     </div>
   );
