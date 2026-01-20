@@ -65,10 +65,23 @@ export default function EmergencyPage() {
 
   const handleQuestionsComplete = (responses: QuestionResponse[]) => {
     if (caseData) {
-      setCaseData({
+      const updatedCaseData = {
         ...caseData,
         responses,
+      };
+      setCaseData(updatedCaseData);
+      
+      const existingCases = JSON.parse(localStorage.getItem("emergency_cases") || "[]");
+      existingCases.push({
+        ...updatedCaseData,
+        arrivalTime: updatedCaseData.arrivalTime.toISOString(),
+        responses: updatedCaseData.responses.map(r => ({
+          ...r,
+          timestamp: r.timestamp.toISOString()
+        }))
       });
+      localStorage.setItem("emergency_cases", JSON.stringify(existingCases));
+      
       setStage("complete");
     }
   };

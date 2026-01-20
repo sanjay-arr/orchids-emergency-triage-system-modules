@@ -9,12 +9,12 @@ import {
   Mic,
   Shield,
   Clock,
-  Users,
   ArrowRight,
   Zap,
-  FileText,
   Stethoscope,
   Activity,
+  FileText,
+  Download,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -37,7 +37,7 @@ export default function HomePage() {
     {
       icon: Mic,
       title: "Voice-Based Input",
-      description: "Speak naturally to fill forms - no typing required",
+      description: "AI speaks questions and captures voice responses automatically",
       color: "from-red-500 to-orange-500",
     },
     {
@@ -47,9 +47,9 @@ export default function HomePage() {
       color: "from-amber-500 to-yellow-500",
     },
     {
-      icon: Clock,
-      title: "80% Faster",
-      description: "Reduce emergency paperwork time dramatically",
+      icon: Download,
+      title: "PDF Forms Ready",
+      description: "5 hospital-ready forms generated instantly",
       color: "from-emerald-500 to-teal-500",
     },
     {
@@ -63,8 +63,8 @@ export default function HomePage() {
   const stats = [
     { value: "10+", label: "Modules" },
     { value: "3", label: "Languages" },
-    { value: "24/7", label: "Available" },
-    { value: "100%", label: "Paperless" },
+    { value: "5", label: "PDF Forms" },
+    { value: "80%", label: "Faster" },
   ];
 
   return (
@@ -127,8 +127,8 @@ export default function HomePage() {
           </h1>
 
           <p className="text-xl text-slate-400 mb-10 max-w-2xl mx-auto">
-            Voice-powered intelligent system that simplifies emergency documentation 
-            by asking only necessary questions and auto-filling medical forms in real-time.
+            Voice-powered intelligent system that asks questions aloud, captures voice responses, 
+            and generates hospital-ready PDF forms automatically.
           </p>
 
           <div className="flex items-center justify-center gap-4">
@@ -194,9 +194,9 @@ export default function HomePage() {
           <div className="grid md:grid-cols-4 gap-6">
             {[
               { step: "1", title: "Patient Arrives", desc: "Quick registration with basic details" },
-              { step: "2", title: "Voice Interview", desc: "AI asks relevant questions via voice" },
-              { step: "3", title: "Auto Form Fill", desc: "Medical forms filled automatically" },
-              { step: "4", title: "Staff Review", desc: "Doctor reviews and approves" },
+              { step: "2", title: "AI Voice Interview", desc: "System speaks questions, captures voice" },
+              { step: "3", title: "Auto Form Fill", desc: "5 hospital forms generated as PDF" },
+              { step: "4", title: "Staff Review", desc: "Doctor reviews on dashboard" },
             ].map((item, idx) => (
               <div key={idx} className="text-center">
                 <div className="w-12 h-12 rounded-full bg-gradient-to-r from-red-500 to-orange-500 flex items-center justify-center mx-auto mb-4 text-white font-bold text-xl">
@@ -204,6 +204,31 @@ export default function HomePage() {
                 </div>
                 <h3 className="text-white font-semibold mb-2">{item.title}</h3>
                 <p className="text-slate-400 text-sm">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.9, duration: 0.8 }}
+          className="glass-card rounded-3xl p-8 mb-20"
+        >
+          <h2 className="text-2xl font-bold text-white mb-6 text-center">Generated PDF Forms</h2>
+          <div className="grid md:grid-cols-5 gap-4">
+            {[
+              { name: "Emergency Intake", icon: "📋", color: "from-red-500 to-orange-500" },
+              { name: "Triage Assessment", icon: "🩺", color: "from-amber-500 to-yellow-500" },
+              { name: "Allergy & Medication", icon: "💊", color: "from-pink-500 to-rose-500" },
+              { name: "Accident/Symptom", icon: "🚑", color: "from-blue-500 to-cyan-500" },
+              { name: "Doctor Summary", icon: "👨‍⚕️", color: "from-emerald-500 to-teal-500" },
+            ].map((form, idx) => (
+              <div key={idx} className="glass-card-light rounded-2xl p-4 text-center">
+                <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${form.color} flex items-center justify-center mx-auto mb-3`}>
+                  <span className="text-2xl">{form.icon}</span>
+                </div>
+                <p className="text-white text-sm font-medium">{form.name}</p>
               </div>
             ))}
           </div>

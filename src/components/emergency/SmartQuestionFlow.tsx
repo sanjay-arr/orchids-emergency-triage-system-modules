@@ -70,7 +70,7 @@ export function SmartQuestionFlow({
   const [interimTranscript, setInterimTranscript] = useState("");
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [hasSpokenQuestion, setHasSpokenQuestion] = useState(false);
-  const [autoListenEnabled, setAutoListenEnabled] = useState(true);
+  const [waitingForVoice, setWaitingForVoice] = useState(false);
 
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const synthRef = useRef<SpeechSynthesis | null>(null);
@@ -123,7 +123,27 @@ export function SmartQuestionFlow({
       }
 
       if (final) {
-        setTranscript((prev) => (prev + " " + final).trim());
+        const newTranscript = (transcript + " " + final).trim();
+        setTranscript(newTranscript);
+        
+        if (currentQuestion) {
+          if (currentQuestion.type === "yes_no") {
+            const lower = final.toLowerCase().trim();
+            if (lower.includes("yes") || lower.includes("haan") || lower.includes("aam")) {
+              handleVoiceAnswer("Yes");
+            } else if (lower.includes("no") || lower.includes("nahi") || lower.includes("illa")) {
+              handleVoiceAnswer("No");
+            }
+          } else if (currentQuestion.type === "select" && currentQuestion.options) {
+            const lower = final.toLowerCase().trim();
+            const matchedOption = currentQuestion.options.find(opt => 
+              lower.includes(opt.toLowerCase()) || opt.toLowerCase().includes(lower)
+            );
+            if (matchedOption) {
+              handleVoiceAnswer(matchedOption);
+            }
+          }
+        }
       }
       setInterimTranscript(interim);
     };
@@ -141,7 +161,7 @@ export function SmartQuestionFlow({
     };
 
     return recognition;
-  }, [language, isListening, isPaused]);
+  }, [language, isListening, isPaused, transcript, currentQuestion]);
 
   useEffect(() => {
     synthRef.current = typeof window !== "undefined" ? window.speechSynthesis : null;
@@ -152,10 +172,13 @@ export function SmartQuestionFlow({
   }, []);
 
   useEffect(() => {
-    if (currentQuestion && !hasSpokenQuestion && autoListenEnabled) {
-      speakQuestion(currentQuestion.text);
+    if (currentQuestion && !hasSpokenQuestion) {
+      const timeout = setTimeout(() => {
+        speakQuestion();
+      }, 500);
+      return () => clearTimeout(timeout);
     }
-  }, [currentQuestion, hasSpokenQuestion, autoListenEnabled]);
+  }, [currentQuestion, hasSpokenQuestion]);
 
   useEffect(() => {
     if (responses.length >= 3 && !severityDetected) {
@@ -172,11 +195,24 @@ export function SmartQuestionFlow({
     }
   }, [responses, currentPriority, severityDetected, onPriorityEscalate]);
 
-  const speakQuestion = (text: string) => {
-    if (!synthRef.current) return;
+  const speakQuestion = () => {
+    if (!synthRef.current || !currentQuestion) return;
     
     synthRef.current.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
+    
+    let textToSpeak = currentQuestion.text;
+    
+    if (currentQuestion.type === "yes_no") {
+      textToSpeak += ". Please say Yes or No.";
+    } else if (currentQuestion.type === "select" && currentQuestion.options) {
+      textToSpeak += ". Your options are: " + currentQuestion.options.join(", ") + ". Please say your choice.";
+    } else if (currentQuestion.type === "multiple" && currentQuestion.options) {
+      textToSpeak += ". You can select from: " + currentQuestion.options.join(", ") + ".";
+    } else {
+      textToSpeak += ". Please speak your answer.";
+    }
+    
+    const utterance = new SpeechSynthesisUtterance(textToSpeak);
     utterance.lang = languageMap[language];
     utterance.rate = 0.9;
     
@@ -187,9 +223,8 @@ export function SmartQuestionFlow({
     
     utterance.onend = () => {
       setIsSpeaking(false);
-      if (autoListenEnabled && currentQuestion?.type === "text") {
-        setTimeout(() => startListening(), 500);
-      }
+      setWaitingForVoice(true);
+      setTimeout(() => startListening(), 300);
     };
     
     synthRef.current.speak(utterance);
@@ -214,6 +249,7 @@ export function SmartQuestionFlow({
     }
     setIsListening(false);
     setIsPaused(false);
+    setWaitingForVoice(false);
   };
 
   const pauseListening = () => {
@@ -228,6 +264,11 @@ export function SmartQuestionFlow({
       } catch {}
     }
     setIsPaused(false);
+  };
+
+  const handleVoiceAnswer = (answer: string) => {
+    stopListening();
+    handleAnswer(answer, true);
   };
 
   const handleAnswer = (answer: string, viaVoice: boolean) => {
@@ -258,6 +299,7 @@ export function SmartQuestionFlow({
       setTranscript("");
       setInterimTranscript("");
       setHasSpokenQuestion(false);
+      setWaitingForVoice(false);
     }
   };
 
@@ -293,6 +335,7 @@ export function SmartQuestionFlow({
         setTranscript("");
         setInterimTranscript("");
         setHasSpokenQuestion(false);
+        setWaitingForVoice(false);
       }
     }
   };
@@ -340,9 +383,6 @@ export function SmartQuestionFlow({
         <div className="absolute bottom-0 right-0 w-full h-full bg-[radial-gradient(ellipse_at_bottom_right,rgba(234,88,12,0.08),transparent_50%)]" />
         <div className="absolute inset-0 dot-pattern opacity-20" />
       </div>
-
-      <div className="absolute top-1/4 left-10 w-64 h-64 bg-red-500/5 rounded-full blur-[80px]" />
-      <div className="absolute bottom-1/4 right-10 w-80 h-80 bg-orange-500/5 rounded-full blur-[100px]" />
 
       <div className="relative z-10 container mx-auto px-4 py-8 max-w-4xl">
         <motion.header
@@ -432,9 +472,9 @@ export function SmartQuestionFlow({
                   Question <span className="text-white font-semibold">{currentQuestionIndex + 1}</span> of {activeQuestions.length}
                 </span>
                 <span className="text-slate-600">•</span>
-                <span className={`flex items-center gap-1 ${autoListenEnabled ? "text-emerald-400" : "text-slate-500"}`}>
-                  <Mic className="w-4 h-4" />
-                  Voice {autoListenEnabled ? "ON" : "OFF"}
+                <span className={`flex items-center gap-1 ${isListening ? "text-red-400" : isSpeaking ? "text-blue-400" : "text-slate-500"}`}>
+                  {isListening ? <Mic className="w-4 h-4 animate-pulse" /> : isSpeaking ? <Volume2 className="w-4 h-4 animate-pulse" /> : <Mic className="w-4 h-4" />}
+                  {isListening ? "Listening..." : isSpeaking ? "Speaking..." : "Voice Ready"}
                 </span>
               </div>
             </div>
@@ -510,7 +550,7 @@ export function SmartQuestionFlow({
                   </span>
                 )}
                 <button
-                  onClick={() => speakQuestion(currentQuestion.text)}
+                  onClick={speakQuestion}
                   disabled={isSpeaking}
                   className="inline-flex items-center gap-1 text-xs text-blue-400 bg-blue-500/10 px-3 py-1 rounded-full hover:bg-blue-500/20 transition-colors"
                 >
@@ -521,137 +561,146 @@ export function SmartQuestionFlow({
             </div>
           </div>
 
+          <div className="relative mb-6">
+            <div
+              className={`min-h-[80px] p-5 rounded-2xl border-2 transition-all duration-300 ${
+                isListening
+                  ? "border-red-500 bg-red-500/5 shadow-lg shadow-red-500/20"
+                  : "border-slate-700 glass-card-light"
+              }`}
+            >
+              {(transcript || interimTranscript) ? (
+                <p className="text-white text-xl leading-relaxed">
+                  {transcript}
+                  <span className="text-red-400/70 italic">{interimTranscript}</span>
+                </p>
+              ) : (
+                <p className="text-slate-500 text-lg">
+                  {isListening ? "Listening... speak your answer now" : waitingForVoice ? "Starting voice capture..." : "Voice response will appear here"}
+                </p>
+              )}
+
+              {isListening && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="absolute top-4 right-4 flex items-center gap-2 bg-red-500/20 px-3 py-1.5 rounded-full"
+                >
+                  <div className="flex gap-0.5 items-end h-4">
+                    {[...Array(4)].map((_, i) => (
+                      <motion.div
+                        key={i}
+                        animate={{ height: [6, 16, 6] }}
+                        transition={{
+                          duration: 0.5,
+                          repeat: Infinity,
+                          delay: i * 0.1,
+                          ease: "easeInOut",
+                        }}
+                        className="w-1 bg-red-500 rounded-full"
+                      />
+                    ))}
+                  </div>
+                  <span className="text-xs text-red-400 font-medium">Recording</span>
+                </motion.div>
+              )}
+            </div>
+          </div>
+
           {currentQuestion.type === "yes_no" && (
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <motion.button
-                whileHover={{ scale: 1.02, y: -2 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => handleYesNo("Yes")}
-                className="h-24 text-2xl font-bold bg-gradient-to-br from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white rounded-2xl shadow-lg shadow-emerald-500/30 transition-all"
-              >
-                Yes
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.02, y: -2 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => handleYesNo("No")}
-                className="h-24 text-2xl font-bold bg-slate-700 hover:bg-slate-600 text-white rounded-2xl transition-all"
-              >
-                No
-              </motion.button>
+            <div className="space-y-4">
+              <p className="text-sm text-slate-400 text-center mb-4">Say "Yes" or "No", or click a button below</p>
+              <div className="grid grid-cols-2 gap-4">
+                <motion.button
+                  whileHover={{ scale: 1.02, y: -2 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => handleYesNo("Yes")}
+                  className="h-20 text-2xl font-bold bg-gradient-to-br from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white rounded-2xl shadow-lg shadow-emerald-500/30 transition-all"
+                >
+                  Yes
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.02, y: -2 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => handleYesNo("No")}
+                  className="h-20 text-2xl font-bold bg-slate-700 hover:bg-slate-600 text-white rounded-2xl transition-all"
+                >
+                  No
+                </motion.button>
+              </div>
             </div>
           )}
 
           {currentQuestion.type === "select" && currentQuestion.options && (
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              {currentQuestion.options.map((option, idx) => (
-                <motion.button
-                  key={option}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: idx * 0.05 }}
-                  whileHover={{ scale: 1.02, y: -2 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => handleSelectOption(option)}
-                  className="h-auto py-5 px-5 text-left glass-card-light rounded-2xl text-white hover:ring-2 hover:ring-red-500/50 transition-all text-lg"
-                >
-                  {option}
-                </motion.button>
-              ))}
+            <div className="space-y-4">
+              <p className="text-sm text-slate-400 text-center mb-4">Say your choice or click an option below</p>
+              <div className="grid grid-cols-2 gap-4">
+                {currentQuestion.options.map((option, idx) => (
+                  <motion.button
+                    key={option}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.05 }}
+                    whileHover={{ scale: 1.02, y: -2 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => handleSelectOption(option)}
+                    className="h-auto py-5 px-5 text-left glass-card-light rounded-2xl text-white hover:ring-2 hover:ring-red-500/50 transition-all text-lg"
+                  >
+                    {option}
+                  </motion.button>
+                ))}
+              </div>
             </div>
           )}
 
           {currentQuestion.type === "multiple" && currentQuestion.options && (
-            <div className="space-y-3 mb-6">
-              {currentQuestion.options.map((option, idx) => (
-                <motion.label
-                  key={option}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: idx * 0.05 }}
-                  className={`flex items-center gap-4 p-5 rounded-2xl cursor-pointer transition-all ${
-                    selectedOptions.includes(option)
-                      ? "ring-2 ring-red-500 bg-red-500/10"
-                      : "glass-card-light hover:ring-1 hover:ring-slate-600"
-                  }`}
+            <div className="space-y-4">
+              <p className="text-sm text-slate-400 text-center mb-4">Select all that apply, then confirm</p>
+              <div className="space-y-3">
+                {currentQuestion.options.map((option, idx) => (
+                  <motion.label
+                    key={option}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: idx * 0.05 }}
+                    className={`flex items-center gap-4 p-5 rounded-2xl cursor-pointer transition-all ${
+                      selectedOptions.includes(option)
+                        ? "ring-2 ring-red-500 bg-red-500/10"
+                        : "glass-card-light hover:ring-1 hover:ring-slate-600"
+                    }`}
+                  >
+                    <Checkbox
+                      checked={selectedOptions.includes(option)}
+                      onCheckedChange={() => toggleOption(option)}
+                      className="data-[state=checked]:bg-red-500 data-[state=checked]:border-red-500"
+                    />
+                    <span className="text-white text-lg">{option}</span>
+                  </motion.label>
+                ))}
+                <Button
+                  onClick={handleMultipleSelect}
+                  disabled={selectedOptions.length === 0}
+                  className="w-full mt-4 h-14 text-lg font-bold bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 rounded-2xl shadow-lg shadow-emerald-500/30"
                 >
-                  <Checkbox
-                    checked={selectedOptions.includes(option)}
-                    onCheckedChange={() => toggleOption(option)}
-                    className="data-[state=checked]:bg-red-500 data-[state=checked]:border-red-500"
-                  />
-                  <span className="text-white text-lg">{option}</span>
-                </motion.label>
-              ))}
-              <Button
-                onClick={handleMultipleSelect}
-                disabled={selectedOptions.length === 0}
-                className="w-full mt-6 h-14 text-lg font-bold bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 rounded-2xl shadow-lg shadow-emerald-500/30"
-              >
-                <CheckCircle2 className="w-5 h-5 mr-2" />
-                Confirm Selection ({selectedOptions.length})
-              </Button>
+                  <CheckCircle2 className="w-5 h-5 mr-2" />
+                  Confirm Selection ({selectedOptions.length})
+                </Button>
+              </div>
             </div>
           )}
 
           {currentQuestion.type === "text" && (
-            <div className="space-y-6">
-              <div className="relative">
-                <div
-                  className={`min-h-[160px] p-6 rounded-3xl border-2 transition-all duration-300 ${
-                    isListening
-                      ? "border-red-500 bg-red-500/5 shadow-lg shadow-red-500/20"
-                      : "border-slate-700 glass-card"
-                  }`}
-                >
-                  {(transcript || interimTranscript) ? (
-                    <p className="text-white text-xl leading-relaxed">
-                      {transcript}
-                      <span className="text-red-400/70 italic">{interimTranscript}</span>
-                    </p>
-                  ) : (
-                    <p className="text-slate-500 text-xl">
-                      {isListening ? "Listening... speak now" : "Click the microphone to answer"}
-                    </p>
-                  )}
-
-                  {isListening && (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="absolute bottom-4 right-4 flex items-center gap-3 bg-red-500/20 px-4 py-2 rounded-full"
-                    >
-                      <div className="flex gap-1 items-end h-6">
-                        {[...Array(5)].map((_, i) => (
-                          <motion.div
-                            key={i}
-                            animate={{ height: [8, 24, 8] }}
-                            transition={{
-                              duration: 0.5,
-                              repeat: Infinity,
-                              delay: i * 0.1,
-                              ease: "easeInOut",
-                            }}
-                            className="w-1.5 bg-red-500 rounded-full"
-                          />
-                        ))}
-                      </div>
-                      <span className="text-sm text-red-400 font-semibold">Recording...</span>
-                    </motion.div>
-                  )}
-                </div>
-              </div>
-
+            <div className="space-y-4">
               <div className="flex items-center justify-center gap-6">
                 {!isListening ? (
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={startListening}
-                    className="relative h-24 w-24 rounded-full bg-gradient-to-br from-red-600 to-red-500 shadow-lg shadow-red-500/40 flex items-center justify-center"
+                    className="relative h-20 w-20 rounded-full bg-gradient-to-br from-red-600 to-red-500 shadow-lg shadow-red-500/40 flex items-center justify-center"
                   >
                     <div className="absolute inset-0 bg-red-500/20 rounded-full blur-xl animate-pulse" />
-                    <Mic className="w-12 h-12 text-white relative z-10" />
+                    <Mic className="w-10 h-10 text-white relative z-10" />
                   </motion.button>
                 ) : (
                   <>
@@ -659,21 +708,21 @@ export function SmartQuestionFlow({
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       onClick={isPaused ? resumeListening : pauseListening}
-                      className="h-16 w-16 rounded-full glass-card border border-slate-700 flex items-center justify-center"
+                      className="h-14 w-14 rounded-full glass-card border border-slate-700 flex items-center justify-center"
                     >
                       {isPaused ? (
-                        <Play className="w-7 h-7 text-emerald-400" />
+                        <Play className="w-6 h-6 text-emerald-400" />
                       ) : (
-                        <Pause className="w-7 h-7 text-amber-400" />
+                        <Pause className="w-6 h-6 text-amber-400" />
                       )}
                     </motion.button>
                     <motion.button
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       onClick={stopListening}
-                      className="relative h-24 w-24 rounded-full bg-gradient-to-br from-slate-700 to-slate-600 shadow-lg flex items-center justify-center"
+                      className="relative h-20 w-20 rounded-full bg-gradient-to-br from-slate-700 to-slate-600 shadow-lg flex items-center justify-center"
                     >
-                      <MicOff className="w-12 h-12 text-white" />
+                      <MicOff className="w-10 h-10 text-white" />
                     </motion.button>
                   </>
                 )}
@@ -683,7 +732,7 @@ export function SmartQuestionFlow({
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="flex gap-4"
+                  className="flex gap-4 mt-6"
                 >
                   <Button
                     onClick={() => {
