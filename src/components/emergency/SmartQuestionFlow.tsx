@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   EmergencyCategory,
@@ -11,9 +11,7 @@ import {
   EMERGENCY_CATEGORIES,
 } from "@/lib/emergency-types";
 import { EmergencyQuestion, getQuestionsForCategory, shouldShowFollowUp, EMERGENCY_QUESTIONS } from "@/lib/emergency-questions";
-import { VoiceInteraction } from "./VoiceInteraction";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   AlertTriangle,
@@ -23,9 +21,14 @@ import {
   Clock,
   FileText,
   Mic,
+  MicOff,
   Activity,
   Sparkles,
   Zap,
+  Volume2,
+  Languages,
+  Pause,
+  Play,
 } from "lucide-react";
 
 interface SmartQuestionFlowProps {
@@ -36,6 +39,12 @@ interface SmartQuestionFlowProps {
   onComplete: (responses: QuestionResponse[]) => void;
   onPriorityEscalate?: (newPriority: CasePriority) => void;
 }
+
+const LANGUAGES = [
+  { value: "en" as Language, label: "English", native: "English" },
+  { value: "ta" as Language, label: "Tamil", native: "தமிழ்" },
+  { value: "hi" as Language, label: "Hindi", native: "हिन्दी" },
+];
 
 export function SmartQuestionFlow({
   caseId,
@@ -53,6 +62,24 @@ export function SmartQuestionFlow({
   const [language, setLanguage] = useState<Language>("en");
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
   const [severityDetected, setSeverityDetected] = useState(false);
+  const [showLangSelector, setShowLangSelector] = useState(false);
+  
+  const [isListening, setIsListening] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [transcript, setTranscript] = useState("");
+  const [interimTranscript, setInterimTranscript] = useState("");
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [hasSpokenQuestion, setHasSpokenQuestion] = useState(false);
+  const [autoListenEnabled, setAutoListenEnabled] = useState(true);
+
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const synthRef = useRef<SpeechSynthesis | null>(null);
+
+  const languageMap: Record<Language, string> = {
+    en: "en-US",
+    ta: "ta-IN",
+    hi: "hi-IN",
+  };
 
   const questions = useMemo(() => getQuestionsForCategory(category), [category]);
 
@@ -69,8 +96,66 @@ export function SmartQuestionFlow({
   const currentQuestion = activeQuestions[currentQuestionIndex];
   const progress = ((currentQuestionIndex + 1) / activeQuestions.length) * 100;
   const isLastQuestion = currentQuestionIndex >= activeQuestions.length - 1;
-
   const categoryInfo = EMERGENCY_CATEGORIES.find((c) => c.value === category);
+
+  const initRecognition = useCallback(() => {
+    if (typeof window === "undefined") return null;
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) return null;
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = languageMap[language];
+
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
+      let interim = "";
+      let final = "";
+
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const result = event.results[i];
+        if (result.isFinal) {
+          final += result[0].transcript;
+        } else {
+          interim += result[0].transcript;
+        }
+      }
+
+      if (final) {
+        setTranscript((prev) => (prev + " " + final).trim());
+      }
+      setInterimTranscript(interim);
+    };
+
+    recognition.onerror = () => {
+      setIsListening(false);
+    };
+
+    recognition.onend = () => {
+      if (isListening && !isPaused) {
+        try {
+          recognition.start();
+        } catch {}
+      }
+    };
+
+    return recognition;
+  }, [language, isListening, isPaused]);
+
+  useEffect(() => {
+    synthRef.current = typeof window !== "undefined" ? window.speechSynthesis : null;
+    return () => {
+      if (recognitionRef.current) recognitionRef.current.stop();
+      if (synthRef.current) synthRef.current.cancel();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (currentQuestion && !hasSpokenQuestion && autoListenEnabled) {
+      speakQuestion(currentQuestion.text);
+    }
+  }, [currentQuestion, hasSpokenQuestion, autoListenEnabled]);
 
   useEffect(() => {
     if (responses.length >= 3 && !severityDetected) {
@@ -87,8 +172,68 @@ export function SmartQuestionFlow({
     }
   }, [responses, currentPriority, severityDetected, onPriorityEscalate]);
 
+  const speakQuestion = (text: string) => {
+    if (!synthRef.current) return;
+    
+    synthRef.current.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = languageMap[language];
+    utterance.rate = 0.9;
+    
+    utterance.onstart = () => {
+      setIsSpeaking(true);
+      setHasSpokenQuestion(true);
+    };
+    
+    utterance.onend = () => {
+      setIsSpeaking(false);
+      if (autoListenEnabled && currentQuestion?.type === "text") {
+        setTimeout(() => startListening(), 500);
+      }
+    };
+    
+    synthRef.current.speak(utterance);
+  };
+
+  const startListening = () => {
+    if (!recognitionRef.current) {
+      recognitionRef.current = initRecognition();
+    }
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.start();
+        setIsListening(true);
+        setIsPaused(false);
+      } catch {}
+    }
+  };
+
+  const stopListening = () => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+    }
+    setIsListening(false);
+    setIsPaused(false);
+  };
+
+  const pauseListening = () => {
+    if (recognitionRef.current) recognitionRef.current.stop();
+    setIsPaused(true);
+  };
+
+  const resumeListening = () => {
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.start();
+      } catch {}
+    }
+    setIsPaused(false);
+  };
+
   const handleAnswer = (answer: string, viaVoice: boolean) => {
     if (!currentQuestion) return;
+
+    stopListening();
 
     const response: QuestionResponse = {
       questionId: currentQuestion.id,
@@ -110,6 +255,15 @@ export function SmartQuestionFlow({
     } else {
       setCurrentQuestionIndex((prev) => prev + 1);
       setSelectedOptions([]);
+      setTranscript("");
+      setInterimTranscript("");
+      setHasSpokenQuestion(false);
+    }
+  };
+
+  const handleVoiceConfirm = () => {
+    if (transcript.trim()) {
+      handleAnswer(transcript.trim(), true);
     }
   };
 
@@ -129,22 +283,33 @@ export function SmartQuestionFlow({
 
   const handleSkip = () => {
     if (!currentQuestion?.required) {
+      stopListening();
       setSkippedQuestions((prev) => new Set(prev).add(currentQuestion.id));
       if (isLastQuestion) {
         onComplete(responses);
       } else {
         setCurrentQuestionIndex((prev) => prev + 1);
         setSelectedOptions([]);
+        setTranscript("");
+        setInterimTranscript("");
+        setHasSpokenQuestion(false);
       }
     }
   };
 
   const toggleOption = (option: string) => {
     setSelectedOptions((prev) =>
-      prev.includes(option)
-        ? prev.filter((o) => o !== option)
-        : [...prev, option]
+      prev.includes(option) ? prev.filter((o) => o !== option) : [...prev, option]
     );
+  };
+
+  const handleLanguageChange = (lang: Language) => {
+    setLanguage(lang);
+    setShowLangSelector(false);
+    if (isListening) {
+      stopListening();
+      recognitionRef.current = null;
+    }
   };
 
   if (!currentQuestion) {
@@ -196,23 +361,58 @@ export function SmartQuestionFlow({
             </div>
           </div>
 
-          <motion.div
-            initial={{ scale: 0.9 }}
-            animate={{ scale: 1 }}
-            className={`flex items-center gap-3 px-5 py-3 rounded-2xl ${
-              currentPriority === "critical"
-                ? "status-critical"
-                : currentPriority === "urgent"
-                ? "status-urgent"
-                : "status-normal"
-            }`}
-          >
-            <div className={`w-3 h-3 rounded-full animate-pulse ${PRIORITY_CONFIG[currentPriority].bgColor}`} />
-            <span className={`font-bold ${PRIORITY_CONFIG[currentPriority].color}`}>
-              {PRIORITY_CONFIG[currentPriority].label}
-            </span>
-            <Activity className={`w-5 h-5 ${PRIORITY_CONFIG[currentPriority].color}`} />
-          </motion.div>
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowLangSelector(!showLangSelector)}
+                className="glass-card border-slate-700 text-slate-300 hover:bg-slate-700 rounded-xl"
+              >
+                <Languages className="w-4 h-4 mr-2 text-purple-400" />
+                {LANGUAGES.find((l) => l.value === language)?.native}
+              </Button>
+              <AnimatePresence>
+                {showLangSelector && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                    className="absolute top-full right-0 mt-2 glass-card rounded-xl overflow-hidden z-20 min-w-[160px]"
+                  >
+                    {LANGUAGES.map((lang) => (
+                      <button
+                        key={lang.value}
+                        onClick={() => handleLanguageChange(lang.value)}
+                        className={`w-full px-4 py-3 text-left hover:bg-slate-700/50 transition-colors ${
+                          language === lang.value ? "bg-red-500/20 text-red-400" : "text-slate-300"
+                        }`}
+                      >
+                        {lang.native}
+                      </button>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            <motion.div
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              className={`flex items-center gap-3 px-5 py-3 rounded-2xl ${
+                currentPriority === "critical"
+                  ? "status-critical"
+                  : currentPriority === "urgent"
+                  ? "status-urgent"
+                  : "status-normal"
+              }`}
+            >
+              <div className={`w-3 h-3 rounded-full animate-pulse ${PRIORITY_CONFIG[currentPriority].bgColor}`} />
+              <span className={`font-bold ${PRIORITY_CONFIG[currentPriority].color}`}>
+                {PRIORITY_CONFIG[currentPriority].label}
+              </span>
+            </motion.div>
+          </div>
         </motion.header>
 
         <motion.div
@@ -232,9 +432,9 @@ export function SmartQuestionFlow({
                   Question <span className="text-white font-semibold">{currentQuestionIndex + 1}</span> of {activeQuestions.length}
                 </span>
                 <span className="text-slate-600">•</span>
-                <span className="text-slate-400 flex items-center gap-1">
-                  <Mic className="w-4 h-4 text-emerald-400" />
-                  Voice enabled
+                <span className={`flex items-center gap-1 ${autoListenEnabled ? "text-emerald-400" : "text-slate-500"}`}>
+                  <Mic className="w-4 h-4" />
+                  Voice {autoListenEnabled ? "ON" : "OFF"}
                 </span>
               </div>
             </div>
@@ -251,7 +451,6 @@ export function SmartQuestionFlow({
               transition={{ duration: 0.5, ease: "easeOut" }}
               className="absolute inset-y-0 left-0 bg-gradient-to-r from-red-500 to-orange-500 rounded-full"
             />
-            <div className="absolute inset-0 animate-shimmer" />
           </div>
         </motion.div>
 
@@ -269,9 +468,7 @@ export function SmartQuestionFlow({
                 </div>
                 <div className="flex-1">
                   <p className="text-red-300 font-bold text-lg">Priority Escalated</p>
-                  <p className="text-red-400/80 text-sm">
-                    Critical symptoms detected. Case has been upgraded to highest priority.
-                  </p>
+                  <p className="text-red-400/80 text-sm">Critical symptoms detected.</p>
                 </div>
                 <AlertTriangle className="w-8 h-8 text-red-400 animate-pulse" />
               </div>
@@ -294,15 +491,33 @@ export function SmartQuestionFlow({
               </div>
             )}
             <div className="flex-1">
-              <h3 className="text-2xl font-semibold text-white mb-2 leading-relaxed">
-                {currentQuestion.text}
-              </h3>
-              {currentQuestion.required && (
-                <span className="inline-flex items-center gap-1 text-xs text-red-400 bg-red-500/10 px-2 py-1 rounded-full">
-                  <Sparkles className="w-3 h-3" />
-                  Required
-                </span>
-              )}
+              <div className="flex items-center gap-3 mb-3">
+                <h3 className="text-2xl font-semibold text-white leading-relaxed">
+                  {currentQuestion.text}
+                </h3>
+                {isSpeaking && (
+                  <div className="flex items-center gap-2 bg-blue-500/20 px-3 py-1 rounded-full">
+                    <Volume2 className="w-4 h-4 text-blue-400 animate-pulse" />
+                    <span className="text-xs text-blue-400">Speaking...</span>
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center gap-3">
+                {currentQuestion.required && (
+                  <span className="inline-flex items-center gap-1 text-xs text-red-400 bg-red-500/10 px-2 py-1 rounded-full">
+                    <Sparkles className="w-3 h-3" />
+                    Required
+                  </span>
+                )}
+                <button
+                  onClick={() => speakQuestion(currentQuestion.text)}
+                  disabled={isSpeaking}
+                  className="inline-flex items-center gap-1 text-xs text-blue-400 bg-blue-500/10 px-3 py-1 rounded-full hover:bg-blue-500/20 transition-colors"
+                >
+                  <Volume2 className="w-3 h-3" />
+                  Repeat Question
+                </button>
+              </div>
             </div>
           </div>
 
@@ -312,7 +527,7 @@ export function SmartQuestionFlow({
                 whileHover={{ scale: 1.02, y: -2 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => handleYesNo("Yes")}
-                className="h-20 text-xl font-bold bg-gradient-to-br from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white rounded-2xl shadow-lg shadow-emerald-500/30 transition-all"
+                className="h-24 text-2xl font-bold bg-gradient-to-br from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white rounded-2xl shadow-lg shadow-emerald-500/30 transition-all"
               >
                 Yes
               </motion.button>
@@ -320,7 +535,7 @@ export function SmartQuestionFlow({
                 whileHover={{ scale: 1.02, y: -2 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => handleYesNo("No")}
-                className="h-20 text-xl font-bold bg-slate-700 hover:bg-slate-600 text-white rounded-2xl transition-all"
+                className="h-24 text-2xl font-bold bg-slate-700 hover:bg-slate-600 text-white rounded-2xl transition-all"
               >
                 No
               </motion.button>
@@ -338,7 +553,7 @@ export function SmartQuestionFlow({
                   whileHover={{ scale: 1.02, y: -2 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => handleSelectOption(option)}
-                  className="h-auto py-5 px-5 text-left glass-card-light rounded-2xl text-white hover:ring-2 hover:ring-red-500/50 transition-all"
+                  className="h-auto py-5 px-5 text-left glass-card-light rounded-2xl text-white hover:ring-2 hover:ring-red-500/50 transition-all text-lg"
                 >
                   {option}
                 </motion.button>
@@ -380,23 +595,127 @@ export function SmartQuestionFlow({
           )}
 
           {currentQuestion.type === "text" && (
-            <VoiceInteraction
-              onTranscript={handleAnswer}
-              placeholder="Speak or type your answer..."
-              language={language}
-              onLanguageChange={setLanguage}
-            />
+            <div className="space-y-6">
+              <div className="relative">
+                <div
+                  className={`min-h-[160px] p-6 rounded-3xl border-2 transition-all duration-300 ${
+                    isListening
+                      ? "border-red-500 bg-red-500/5 shadow-lg shadow-red-500/20"
+                      : "border-slate-700 glass-card"
+                  }`}
+                >
+                  {(transcript || interimTranscript) ? (
+                    <p className="text-white text-xl leading-relaxed">
+                      {transcript}
+                      <span className="text-red-400/70 italic">{interimTranscript}</span>
+                    </p>
+                  ) : (
+                    <p className="text-slate-500 text-xl">
+                      {isListening ? "Listening... speak now" : "Click the microphone to answer"}
+                    </p>
+                  )}
+
+                  {isListening && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="absolute bottom-4 right-4 flex items-center gap-3 bg-red-500/20 px-4 py-2 rounded-full"
+                    >
+                      <div className="flex gap-1 items-end h-6">
+                        {[...Array(5)].map((_, i) => (
+                          <motion.div
+                            key={i}
+                            animate={{ height: [8, 24, 8] }}
+                            transition={{
+                              duration: 0.5,
+                              repeat: Infinity,
+                              delay: i * 0.1,
+                              ease: "easeInOut",
+                            }}
+                            className="w-1.5 bg-red-500 rounded-full"
+                          />
+                        ))}
+                      </div>
+                      <span className="text-sm text-red-400 font-semibold">Recording...</span>
+                    </motion.div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-center gap-6">
+                {!isListening ? (
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={startListening}
+                    className="relative h-24 w-24 rounded-full bg-gradient-to-br from-red-600 to-red-500 shadow-lg shadow-red-500/40 flex items-center justify-center"
+                  >
+                    <div className="absolute inset-0 bg-red-500/20 rounded-full blur-xl animate-pulse" />
+                    <Mic className="w-12 h-12 text-white relative z-10" />
+                  </motion.button>
+                ) : (
+                  <>
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={isPaused ? resumeListening : pauseListening}
+                      className="h-16 w-16 rounded-full glass-card border border-slate-700 flex items-center justify-center"
+                    >
+                      {isPaused ? (
+                        <Play className="w-7 h-7 text-emerald-400" />
+                      ) : (
+                        <Pause className="w-7 h-7 text-amber-400" />
+                      )}
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={stopListening}
+                      className="relative h-24 w-24 rounded-full bg-gradient-to-br from-slate-700 to-slate-600 shadow-lg flex items-center justify-center"
+                    >
+                      <MicOff className="w-12 h-12 text-white" />
+                    </motion.button>
+                  </>
+                )}
+              </div>
+
+              {transcript.trim() && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex gap-4"
+                >
+                  <Button
+                    onClick={() => {
+                      setTranscript("");
+                      setInterimTranscript("");
+                    }}
+                    variant="outline"
+                    className="flex-1 h-14 glass-card border-slate-700 text-slate-300 hover:bg-slate-700 rounded-2xl text-lg"
+                  >
+                    Clear & Retry
+                  </Button>
+                  <Button
+                    onClick={handleVoiceConfirm}
+                    className="flex-1 h-14 text-lg font-bold bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 rounded-2xl shadow-lg shadow-emerald-500/30"
+                  >
+                    <CheckCircle2 className="w-5 h-5 mr-2" />
+                    Confirm Answer
+                  </Button>
+                </motion.div>
+              )}
+            </div>
           )}
 
           <div className="flex items-center justify-between pt-6 border-t border-slate-700/50 mt-8">
-            <div className="flex items-center gap-6 text-sm text-slate-500">
+            <div className="flex items-center gap-4 text-sm text-slate-500">
               <div className="flex items-center gap-2 glass-card-light px-3 py-2 rounded-xl">
                 <FileText className="w-4 h-4 text-blue-400" />
                 <span>{responses.length} answered</span>
               </div>
               <div className="flex items-center gap-2 glass-card-light px-3 py-2 rounded-xl">
                 <Clock className="w-4 h-4 text-amber-400" />
-                <span>{activeQuestions.length - currentQuestionIndex - 1} remaining</span>
+                <span>{activeQuestions.length - currentQuestionIndex - 1} left</span>
               </div>
             </div>
 
@@ -407,7 +726,7 @@ export function SmartQuestionFlow({
                 className="text-slate-400 hover:text-white hover:bg-slate-800"
               >
                 <SkipForward className="w-4 h-4 mr-2" />
-                Skip Question
+                Skip
               </Button>
             )}
           </div>
@@ -420,8 +739,8 @@ export function SmartQuestionFlow({
             className="glass-card rounded-2xl p-5"
           >
             <h4 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">Recent Answers</h4>
-            <div className="space-y-2 max-h-32 overflow-y-auto">
-              {responses.slice(-3).map((r, i) => (
+            <div className="space-y-2 max-h-40 overflow-y-auto">
+              {responses.slice(-4).map((r, i) => (
                 <motion.div
                   key={i}
                   initial={{ opacity: 0, x: -10 }}
@@ -429,8 +748,11 @@ export function SmartQuestionFlow({
                   transition={{ delay: i * 0.1 }}
                   className="flex items-center justify-between text-sm glass-card-light rounded-xl px-4 py-3"
                 >
-                  <span className="text-slate-400 truncate max-w-[60%]">{r.question}</span>
-                  <span className="text-white font-semibold bg-slate-700/50 px-3 py-1 rounded-lg">{r.answer}</span>
+                  <span className="text-slate-400 truncate max-w-[55%]">{r.question}</span>
+                  <div className="flex items-center gap-2">
+                    {r.answeredVia === "voice" && <Mic className="w-3 h-3 text-red-400" />}
+                    <span className="text-white font-semibold bg-slate-700/50 px-3 py-1 rounded-lg">{r.answer}</span>
+                  </div>
                 </motion.div>
               ))}
             </div>
